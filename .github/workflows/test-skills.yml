@@ -1,0 +1,71 @@
+name: Test Skills
+
+on:
+  push:
+    branches: [ main, copilot/** ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-testcontainers-go:
+    name: Test testcontainers-go examples
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      
+      - name: Set up Go
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: testcontainers-go/examples/go.mod
+          cache-dependency-path: testcontainers-go/examples/go.sum
+      
+      - name: Verify examples compile
+        working-directory: testcontainers-go/examples
+        run: |
+          echo "Building all Go test files..."
+          go build -v ./...
+          echo "✅ All examples compiled successfully!"
+      
+      - name: Download dependencies
+        working-directory: testcontainers-go/examples
+        run: |
+          echo "Downloading Go module dependencies..."
+          go mod download
+          go mod verify
+          echo "✅ Dependencies verified!"
+      
+      - name: Run Go vet
+        working-directory: testcontainers-go/examples
+        run: |
+          echo "Running go vet..."
+          go vet ./...
+          echo "✅ Go vet passed!"
+      
+      - name: Check formatting
+        working-directory: testcontainers-go/examples
+        run: |
+          echo "Checking Go formatting..."
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "❌ Go files are not formatted. Please run 'gofmt -w .'"
+            gofmt -l .
+            exit 1
+          fi
+          echo "✅ All files are properly formatted!"
+      
+      - name: Set up Docker
+        run: |
+          echo "Docker is available in GitHub Actions runners by default"
+          docker --version
+      
+      - name: Run tests
+        working-directory: testcontainers-go/examples
+        run: |
+          echo "Running Go tests..."
+          # Run tests with a timeout since they involve container operations
+          # Tests will automatically pull required Docker images
+          go test -v -timeout 10m ./...
+          echo "✅ All tests passed!"
