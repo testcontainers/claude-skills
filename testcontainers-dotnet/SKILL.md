@@ -262,10 +262,11 @@ var connStr = elasticsearch.GetConnectionString();
 
 #### Finding the Right Module
 
-1. **Browse NuGet packages**: Search for "Testcontainers." on [NuGet.org](https://www.nuget.org/packages?q=testcontainers)
-2. **Official documentation**: https://dotnet.testcontainers.org/
-3. **GitHub repository**: https://github.com/testcontainers/testcontainers-dotnet
-4. **Module examples**: Each module has examples in the repository
+1. **Browse available modules**: https://testcontainers.com/modules/?language=dotnet (complete, up-to-date list)
+2. **Browse NuGet packages**: Search for "Testcontainers." on [NuGet.org](https://www.nuget.org/packages?q=testcontainers)
+3. **Official documentation**: https://dotnet.testcontainers.org/
+4. **GitHub repository**: https://github.com/testcontainers/testcontainers-dotnet
+5. **Module examples**: Each module has examples in the repository
 
 **Module naming pattern:**
 ```
