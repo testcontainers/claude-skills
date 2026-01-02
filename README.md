@@ -41,6 +41,24 @@ A comprehensive guide for using Testcontainers for Go to write reliable integrat
 
 See the [testcontainers-go skill documentation](./testcontainers-go/SKILL.md) for detailed usage instructions and examples.
 
+### testcontainers-dotnet
+A comprehensive guide for using Testcontainers for .NET to write reliable integration tests with Docker containers in .NET projects. This skill provides:
+
+- Support for 40+ pre-configured modules for databases, message queues, cloud services, and more
+- Best practices for setting up and managing Docker containers in .NET tests (xUnit, NUnit, MSTest)
+- Configuration guidance for networking, volumes, and environment variables
+- Proper cleanup and resource management patterns with IAsyncLifetime
+- Debugging and troubleshooting techniques
+
+**Key capabilities:**
+- Use pre-configured modules (PostgreSQL, SQL Server, Redis, MongoDB, Kafka, and more)
+- Write integration tests with real services instead of mocks
+- Test against multiple versions or configurations of dependencies
+- Create reproducible test environments with Entity Framework Core
+- Set up ephemeral test infrastructure
+
+See the [testcontainers-dotnet skill documentation](./testcontainers-dotnet/SKILL.md) for detailed usage instructions and examples.
+
 ## Try in Claude Code, Claude.ai, and the API
 
 ### Claude Code

@@ -5,11 +5,13 @@ on:
     branches: [ main, copilot/** ]
     paths:
       - 'testcontainers-go/**'
+      - 'testcontainers-dotnet/**'
       - '.github/workflows/test-skills.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'testcontainers-go/**'
+      - 'testcontainers-dotnet/**'
       - '.github/workflows/test-skills.yml'
 
 jobs:
@@ -74,4 +76,47 @@ jobs:
           # Run tests with a timeout since they involve container operations
           # Tests will automatically pull required Docker images
           go test -v -timeout 10m ./...
+          echo "✅ All tests passed!"
+
+  test-testcontainers-dotnet:
+    name: Test testcontainers-dotnet examples
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      
+      - name: Set up .NET
+        uses: actions/setup-dotnet@3e891b0cb619bf60e2c25674b222b8940e2c1c25 # v4.1.0
+        with:
+          dotnet-version: '8.0.x'
+      
+      - name: Restore dependencies
+        working-directory: testcontainers-dotnet/examples
+        run: |
+          echo "Restoring .NET dependencies..."
+          dotnet restore
+          echo "✅ Dependencies restored!"
+      
+      - name: Build examples
+        working-directory: testcontainers-dotnet/examples
+        run: |
+          echo "Building .NET test project..."
+          dotnet build --no-restore --configuration Release
+          echo "✅ Build successful!"
+      
+      - name: Set up Docker
+        run: |
+          echo "Docker is available in GitHub Actions runners by default"
+          docker --version
+      
+      - name: Run tests
+        working-directory: testcontainers-dotnet/examples
+        run: |
+          echo "Running .NET tests..."
+          # Run tests with verbose output and a timeout since they involve container operations
+          # Tests will automatically pull required Docker images
+          dotnet test --no-build --configuration Release --logger "console;verbosity=detailed" --blame-hang-timeout 10m
           echo "✅ All tests passed!"

@@ -1,0 +1,16 @@
+# CODEOWNERS file for testcontainers/claude-skills repository
+#
+# This file defines code ownership for the repository.
+# Reviewers will be automatically requested for pull requests that modify the specified paths.
+#
+# For more information, see:
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+* @testcontainers/maintainers
+
+# testcontainers-go skill
+/testcontainers-go/ @testcontainers/maintainers
+
+# testcontainers-dotnet skill
+/testcontainers-dotnet/ @HofmeisterAn @testcontainers/maintainers

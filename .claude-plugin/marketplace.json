@@ -22,6 +22,19 @@
       "keywords": ["testcontainers", "go", "docker", "integration-testing", "testing", "containers", "databases", "postgres", "redis", "kafka", "mysql", "mongodb"],
       "category": "development",
       "strict": false
+    },
+    {
+      "name": "testcontainers-dotnet",
+      "source": "./testcontainers-dotnet",
+      "description": "A comprehensive guide for using Testcontainers for .NET to write reliable integration tests with Docker containers in .NET projects. Supports 40+ pre-configured modules for databases, message queues, cloud services, and more.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Testcontainers",
+        "email": "info@testcontainers.org"
+      },
+      "keywords": ["testcontainers", "dotnet", "csharp", "docker", "integration-testing", "testing", "containers", "databases", "postgres", "sqlserver", "redis", "kafka", "mongodb", "entityframework"],
+      "category": "development",
+      "strict": false
     }
   ]
 }
