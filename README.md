@@ -155,6 +155,7 @@ This repository is licensed under the MIT License. See the [LICENSE](./LICENSE) 
 ## Related Projects
 
 - [Testcontainers for Go](https://github.com/testcontainers/testcontainers-go) - The main Testcontainers for Go library
+- [Testcontainers for .NET](https://github.com/testcontainers/testcontainers-dotnet) - The main Testcontainers for .NET library
 - [Testcontainers](https://testcontainers.com/) - Official Testcontainers website
 - [Anthropic Skills](https://github.com/anthropics/skills) - Main skills repository with additional examples
 
