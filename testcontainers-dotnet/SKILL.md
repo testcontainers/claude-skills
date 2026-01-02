@@ -1022,9 +1022,8 @@ public async Task DebugWithLogging()
     _output.WriteLine($"STDOUT:\n{stdout}");
     _output.WriteLine($"STDERR:\n{stderr}");
 
-    // Get container info
-    var containerInfo = await container.GetContainerInspectionAsync();
-    _output.WriteLine($"Container State: {containerInfo.State.Status}");
+    // Verify container is running
+    _output.WriteLine($"Container ID: {container.Id}");
 }
 ```
 
