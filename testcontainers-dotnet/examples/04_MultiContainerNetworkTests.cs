@@ -25,8 +25,7 @@ public class MultiContainerNetworkTests : IAsyncLifetime
         await _network.CreateAsync();
 
         // Start PostgreSQL on the network
-        _postgres = new PostgreSqlBuilder()
-            .WithImage("postgres:16-alpine")
+        _postgres = new PostgreSqlBuilder("postgres:16-alpine")
             .WithNetwork(_network)
             .WithNetworkAliases("database")
             .Build();
@@ -34,8 +33,7 @@ public class MultiContainerNetworkTests : IAsyncLifetime
         await _postgres.StartAsync();
 
         // Start Redis on the same network
-        _redis = new RedisBuilder()
-            .WithImage("redis:7-alpine")
+        _redis = new RedisBuilder("redis:7-alpine")
             .WithNetwork(_network)
             .WithNetworkAliases("cache")
             .Build();
@@ -135,15 +133,13 @@ public class MicroservicesArchitectureTests : IAsyncLifetime
         await _network.CreateAsync();
 
         // Start database service
-        _database = new PostgreSqlBuilder()
-            .WithImage("postgres:16-alpine")
+        _database = new PostgreSqlBuilder("postgres:16-alpine")
             .WithNetwork(_network)
             .WithNetworkAliases("db", "database")
             .Build();
 
         // Start cache service
-        _cache = new RedisBuilder()
-            .WithImage("redis:7-alpine")
+        _cache = new RedisBuilder("redis:7-alpine")
             .WithNetwork(_network)
             .WithNetworkAliases("redis", "cache")
             .Build();

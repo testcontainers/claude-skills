@@ -117,9 +117,7 @@ using Xunit;
 
 public class DatabaseTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
-        .Build();
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
 
     public async Task InitializeAsync()
     {
@@ -166,7 +164,7 @@ var network = new NetworkBuilder().Build();
 await network.CreateAsync();
 
 // Start containers on network
-var db = new PostgreSqlBuilder()
+var db = new PostgreSqlBuilder("postgres:16-alpine")
     .WithNetwork(network)
     .WithNetworkAliases("database")
     .Build();

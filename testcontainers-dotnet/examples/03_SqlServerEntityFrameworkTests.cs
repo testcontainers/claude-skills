@@ -33,9 +33,7 @@ public class User
 /// </summary>
 public class SqlServerEntityFrameworkTests : IAsyncLifetime
 {
-    private readonly MsSqlContainer _mssql = new MsSqlBuilder()
-        .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
-        .Build();
+    private readonly MsSqlContainer _mssql = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest").Build();
 
     private ApplicationDbContext? _dbContext;
 

@@ -32,7 +32,7 @@
         "name": "Testcontainers",
         "email": "info@testcontainers.org"
       },
-      "keywords": ["testcontainers", "dotnet", "csharp", "docker", "integration-testing", "testing", "containers", "databases", "postgres", "sqlserver", "redis", "kafka", "mongodb", "entityframework"],
+      "keywords": ["testcontainers", "dotnet", "csharp", "containers", "docker", "integration-testing", "testing", "mstest", "nunit", "xunit", "databases", "mongodb", "postgres", "sqlserver", "message-queues", "redis", "rabbitmq", "kafka", "entityframework"],
       "category": "development",
       "strict": false
     }
