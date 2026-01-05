@@ -82,13 +82,10 @@ public class MultiContainerNetworkTests : IAsyncLifetime
     public async Task ContainerCommunication_UsingNetworkAliases()
     {
         // Arrange - Create an app container that connects to both services
-        var appContainer = new ContainerBuilder()
-            .WithImage("alpine:latest")
+        var appContainer = new ContainerBuilder("alpine:latest")
             .WithNetwork(_network!)
             .WithNetworkAliases("app")
             .WithCommand("sh", "-c", "sleep 30")
-            .WithWaitStrategy(Wait.ForUnixContainer()
-                .UntilCommandIsCompleted("sh", "-c", "echo ready"))
             .Build();
 
         await appContainer.StartAsync();
@@ -151,8 +148,7 @@ public class MicroservicesArchitectureTests : IAsyncLifetime
         );
 
         // Start application container that uses both services
-        _appContainer = new ContainerBuilder()
-            .WithImage("alpine:latest")
+        _appContainer = new ContainerBuilder("alpine:latest")
             .WithNetwork(_network)
             .WithNetworkAliases("app")
             .WithEnvironment("DB_HOST", "database")
@@ -160,8 +156,6 @@ public class MicroservicesArchitectureTests : IAsyncLifetime
             .WithEnvironment("REDIS_HOST", "cache")
             .WithEnvironment("REDIS_PORT", "6379")
             .WithCommand("sh", "-c", "sleep 60")
-            .WithWaitStrategy(Wait.ForUnixContainer()
-                .UntilCommandIsCompleted("sh", "-c", "echo ready"))
             .Build();
 
         await _appContainer.StartAsync();
