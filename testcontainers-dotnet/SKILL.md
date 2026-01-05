@@ -1470,13 +1470,13 @@ public class FullStackTests : IAsyncLifetime
 ## Best Practices
 
 1. **Always use pre-configured modules when available** - They provide sensible defaults and helper methods
-2. **Use IAsyncLifetime for test lifecycle** - Proper async initialization and cleanup
+2. **Use async lifecycle management** - Proper async initialization and cleanup (IAsyncLifetime in xUnit, [OneTimeSetUp]/[OneTimeTearDown] in NUnit, [ClassInitialize]/[ClassCleanup] in MSTest)
 3. **Always add wait strategies** - Ensures containers are ready before tests run; never use `Task.Delay()`
 4. **Choose appropriate wait strategies** - Use HTTP for health endpoints, logs for startup messages, or ports for availability
-5. **Leverage Theory/InlineData** - Test against multiple versions or configurations
+5. **Test against multiple configurations** - Use parameterized tests to validate against different versions or configurations (Theory/InlineData in xUnit, TestCase in NUnit, DataRow in MSTest)
 6. **Use custom networks** - For multi-container communication
 7. **Keep containers ephemeral** - Don't rely on state between tests
-8. **Enable parallel execution carefully** - Use class fixtures for shared containers
+8. **Share containers when appropriate** - Use fixtures or setup methods to share containers across tests for better performance
 9. **Use module helper methods** - E.g., `GetConnectionString()`, `GetBootstrapAddress()`
 10. **Debug with logs** - Use `GetLogsAsync()` when troubleshooting
 11. **Use builder pattern** - Fluent API for clear, maintainable configuration
