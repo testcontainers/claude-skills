@@ -1,4 +1,5 @@
 using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Networks;
 using Testcontainers.PostgreSql;
@@ -86,6 +87,8 @@ public class MultiContainerNetworkTests : IAsyncLifetime
             .WithNetwork(_network!)
             .WithNetworkAliases("app")
             .WithCommand("sh", "-c", "sleep 30")
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilCommandIsCompleted("sh", "-c", "echo ready"))
             .Build();
 
         await appContainer.StartAsync();
@@ -156,6 +159,8 @@ public class MicroservicesArchitectureTests : IAsyncLifetime
             .WithEnvironment("REDIS_HOST", "cache")
             .WithEnvironment("REDIS_PORT", "6379")
             .WithCommand("sh", "-c", "sleep 60")
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilCommandIsCompleted("sh", "-c", "echo ready"))
             .Build();
 
         await _appContainer.StartAsync();

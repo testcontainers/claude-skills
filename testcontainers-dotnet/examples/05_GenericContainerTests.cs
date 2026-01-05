@@ -1,4 +1,5 @@
 using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using Xunit;
 
@@ -31,6 +32,8 @@ public class GenericContainerTests : IAsyncLifetime
         // Arrange
         _container = new ContainerBuilder("nginx:alpine")
             .WithPortBinding(80, true)
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilHttpRequestIsSucceeded(r => r.ForPort(80).ForPath("/")))
             .Build();
 
         // Act
@@ -52,6 +55,8 @@ public class GenericContainerTests : IAsyncLifetime
             .WithEnvironment("TEST_VAR", "test-value")
             .WithEnvironment("ANOTHER_VAR", "another-value")
             .WithCommand("sh", "-c", "sleep 10")
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilCommandIsCompleted("sh", "-c", "echo ready"))
             .Build();
 
         // Act
@@ -70,6 +75,8 @@ public class GenericContainerTests : IAsyncLifetime
         // Arrange
         _container = new ContainerBuilder("alpine:latest")
             .WithCommand("sh", "-c", "sleep 20")
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilCommandIsCompleted("sh", "-c", "echo ready"))
             .Build();
 
         await _container.StartAsync();
@@ -88,6 +95,8 @@ public class GenericContainerTests : IAsyncLifetime
         // Arrange
         _container = new ContainerBuilder("alpine:latest")
             .WithCommand("sh", "-c", "echo 'Container started successfully' && sleep 5")
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilMessageIsLogged("Container started successfully"))
             .Build();
 
         // Act
@@ -105,6 +114,8 @@ public class GenericContainerTests : IAsyncLifetime
         // Arrange
         _container = new ContainerBuilder("alpine:latest")
             .WithCommand("sh", "-c", "sleep 2 && echo 'Ready to serve' && sleep 10")
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilMessageIsLogged("Ready to serve"))
             .Build();
 
         // Act
@@ -112,7 +123,9 @@ public class GenericContainerTests : IAsyncLifetime
         await _container.StartAsync();
         var elapsed = DateTime.UtcNow - startTime;
 
-        // Assert - Note: without wait strategy, this may not wait for the log
+        // Assert
+        Assert.True(elapsed.TotalSeconds >= 2, "Should wait for log message");
+
         var (stdout, _) = await _container.GetLogsAsync();
         Assert.Contains("Ready to serve", stdout);
     }
@@ -123,6 +136,8 @@ public class GenericContainerTests : IAsyncLifetime
         // Arrange
         _container = new ContainerBuilder("nginx:alpine")
             .WithPortBinding(80, true)  // true = assign random port
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilHttpRequestIsSucceeded(r => r.ForPort(80).ForPath("/")))
             .Build();
 
         // Act
@@ -147,6 +162,11 @@ public class AdvancedGenericContainerTests
         // Arrange
         await using var container = new ContainerBuilder("nginx:alpine")
             .WithPortBinding(80, true)
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilHttpRequestIsSucceeded(request => request
+                    .ForPort(80)
+                    .ForPath("/")
+                    .ForStatusCode(System.Net.HttpStatusCode.OK)))
             .Build();
 
         // Act
@@ -178,6 +198,8 @@ public class AdvancedGenericContainerTests
             await using var container = new ContainerBuilder("alpine:latest")
                 .WithBindMount(tempDir, "/data")
                 .WithCommand("sh", "-c", "sleep 10")
+                .WithWaitStrategy(Wait.ForUnixContainer()
+                    .UntilCommandIsCompleted("sh", "-c", "echo ready"))
                 .Build();
 
             // Act
@@ -207,6 +229,8 @@ public class AdvancedGenericContainerTests
             .WithLabel("test.project", "testcontainers-dotnet")
             .WithLabel("test.environment", "ci")
             .WithCommand("sh", "-c", "sleep 5")
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilCommandIsCompleted("sh", "-c", "echo ready"))
             .Build();
 
         // Act
@@ -223,10 +247,14 @@ public class AdvancedGenericContainerTests
         // Arrange
         var container1 = new ContainerBuilder("alpine:latest")
             .WithCommand("sh", "-c", "sleep 10")
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilCommandIsCompleted("sh", "-c", "echo ready"))
             .Build();
 
         var container2 = new ContainerBuilder("alpine:latest")
             .WithCommand("sh", "-c", "sleep 10")
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilCommandIsCompleted("sh", "-c", "echo ready"))
             .Build();
 
         try

@@ -196,7 +196,7 @@ var postgres = new PostgreSqlBuilder()
     .WithImage("postgres:16-alpine")
     .WithDatabase("myapp_test")
     .WithResourceMapping("./init.sql", "/docker-entrypoint-initdb.d/init.sql")
-    .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(5432))
+    .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(5432)))
     .Build();
 
 // Redis with custom configuration
@@ -291,7 +291,7 @@ public class CustomContainerTests : IAsyncLifetime
         .WithImage("custom-image:latest")
         .WithPortBinding(8080, true) // Random host port
         .WithEnvironment("APP_ENV", "test")
-        .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(8080))
+        .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(8080).ForPath("/")))
         .Build();
 
     public async Task InitializeAsync()
@@ -343,7 +343,7 @@ var container = new ContainerBuilder()
     .WithTmpfsMount("/tmp")
 
     // Wait strategies (REQUIRED for reliability)
-    .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(80))
+    .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(80).ForPath("/")))
     // Or: .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(80)))
     // Or: .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("ready"))
 
@@ -612,7 +612,7 @@ public class MultiContainerTests : IAsyncLifetime
             .WithEnvironment("DB_HOST", "database")      // Use network alias
             .WithEnvironment("DB_PORT", "5432")          // Internal port
             .WithPortBinding(8080, true)
-            .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(8080))
+            .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(8080).ForPath("/")))
             .Build();
 
         await _app.StartAsync();
@@ -800,7 +800,7 @@ public async Task ReadContainerLogs()
     await using var container = new ContainerBuilder()
         .WithImage("nginx:alpine")
         .WithPortBinding(80, true)
-        .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(80))
+        .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(80).ForPath("/")))
         .Build();
 
     await container.StartAsync();
@@ -902,16 +902,16 @@ var container = new ContainerBuilder()
 - ❌ **Never use `Task.Delay()` or `Thread.Sleep()`** - This is an anti-pattern that leads to flaky tests
 - ✅ **Set reasonable timeouts** to handle slow CI environments
 
-#### Port-Based Waiting (Recommended)
+#### HTTP-Based Waiting (Recommended for Web Services)
 
 ```csharp
 using DotNet.Testcontainers.Configurations;
 
 var container = new ContainerBuilder()
-    .WithImage("postgres:16")
-    .WithPortBinding(5432, true)
+    .WithImage("nginx:alpine")
+    .WithPortBinding(80, true)
     .WithWaitStrategy(Wait.ForUnixContainer()
-        .UntilPortIsAvailable(5432))
+        .UntilHttpRequestIsSucceeded(r => r.ForPort(80).ForPath("/")))
     .Build();
 ```
 
@@ -964,7 +964,7 @@ var container = new ContainerBuilder()
     .WithImage("myapp:latest")
     .WithPortBinding(8080, true)
     .WithWaitStrategy(Wait.ForUnixContainer()
-        .UntilPortIsAvailable(8080)
+        .UntilHttpRequestIsSucceeded(r => r.ForPort(8080).ForPath("/"))
         .UntilMessageIsLogged("Application started")
         .UntilHttpRequestIsSucceeded(r => r.ForPort(8080).ForPath("/health")))
     .Build();
@@ -1013,7 +1013,7 @@ public async Task DebugWithLogging()
     await using var container = new ContainerBuilder()
         .WithImage("myapp:latest")
         .WithPortBinding(8080, true)
-        .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(8080))
+        .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(8080).ForPath("/")))
         .Build();
 
     await container.StartAsync();
@@ -1037,7 +1037,7 @@ public async Task DebugWithLogging()
 var container = new ContainerBuilder()
     .WithImage("slow-starting-app:latest")
     .WithWaitStrategy(Wait.ForUnixContainer()
-        .UntilPortIsAvailable(8080)
+        .UntilHttpRequestIsSucceeded(r => r.ForPort(8080).ForPath("/"))
         .WithTimeout(TimeSpan.FromMinutes(5)))  // Increase timeout
     .Build();
 ```
@@ -1434,7 +1434,7 @@ public class FullStackTests : IAsyncLifetime
             .WithEnvironment("REDIS_HOST", "cache")
             .WithEnvironment("REDIS_PORT", "6379")
             .WithPortBinding(8080, true)
-            .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(8080))
+            .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(8080).ForPath("/")))
             .Build();
 
         await _app.StartAsync();
