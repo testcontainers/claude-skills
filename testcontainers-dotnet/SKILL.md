@@ -12,7 +12,7 @@ A comprehensive guide for using Testcontainers for .NET to write reliable integr
 
 This skill helps you write integration tests using Testcontainers for .NET, a .NET library that provides lightweight, throwaway instances of common databases, message queues, web browsers, or anything that can run in a Docker container.
 
-**Key capabilities:**
+**Key capabilities**:
 - Use 40+ pre-configured modules for common services (databases, message queues, cloud services, etc.)
 - Set up and manage Docker containers in .NET tests (xUnit, NUnit, MSTest)
 - Configure networking, volumes, and environment variables
@@ -31,7 +31,7 @@ Use this skill when you need to:
 ## Prerequisites
 
 - **Docker or Podman** installed and running
-- **.NET 8.0+** (check project requirements; library supports .NET 6.0, 7.0, 8.0, and 9.0)
+- **.NET 8.0+** (check project requirements; library supports .NET and .NET Standard)
 - **Docker socket** accessible at standard locations (Docker Desktop on macOS/Windows, `/var/run/docker.sock` on Linux)
 - **Test framework**: xUnit, NUnit, or MSTest
 
@@ -43,6 +43,7 @@ Add Testcontainers for .NET to your test project:
 
 ```bash
 # Core library (required)
+# For modules, the core library will be resolved through transitive dependencies.
 dotnet add package Testcontainers
 
 # For pre-configured modules (recommended)
@@ -73,15 +74,18 @@ dotnet add package Testcontainers.Elasticsearch
 # And many more...
 ```
 
-**Verify Docker availability:**
+**Verify Docker availability**:
 
 ```csharp
 using DotNet.Testcontainers.Configurations;
+using Xunit;
 
 [Fact]
-public async Task DockerIsAvailable()
+public void DockerIsAvailable()
 {
-    // This will throw if Docker is not running
+    // This will throw an exception if TC's auto-discovery mechanism does not find a
+    // running container runtime. This specific test is usually not necessary; it just
+    // helps in cases to better understand which runtime TC selects.
     var testcontainersConfiguration = TestcontainersSettings.OS;
     Assert.NotNull(testcontainersConfiguration);
 }
@@ -97,58 +101,79 @@ public async Task DockerIsAvailable()
 
 - **Sensible defaults**: Pre-configured ports, environment variables, and wait strategies
 - **Connection helpers**: Built-in properties like `GetConnectionString()`, `GetBootstrapAddress()`
-- **Specialized features**: Module-specific functionality (e.g., SQL Server with Azure SQL Edge support)
+- **Specialized features**: Module-specific functionality (e.g., running scripts inside the container)
 - **Automatic credentials**: Secure credential generation and management
 - **Battle-tested**: Used in production by thousands of projects
 
 #### Available Module Categories
 
-**Databases (15+ modules):**
-- `Testcontainers.PostgreSql`, `Testcontainers.MsSql`, `Testcontainers.MySql`
-- `Testcontainers.MariaDb`, `Testcontainers.MongoDB`, `Testcontainers.Redis`
-- `Testcontainers.Oracle`, `Testcontainers.Db2`, `Testcontainers.Cassandra`
-- `Testcontainers.CouchDb`, `Testcontainers.ClickHouse`, `Testcontainers.DynamoDb`
-- `Testcontainers.InfluxDb`, `Testcontainers.CosmosDb`, `Testcontainers.FaunaDb`
+**Databases (15+ modules)**:
+- `Testcontainers.Cassandra`
+- `Testcontainers.ClickHouse`
+- `Testcontainers.CosmosDb`
+- `Testcontainers.CouchDb`
+- `Testcontainers.Db2`
+- `Testcontainers.DynamoDb`
+- `Testcontainers.InfluxDb`
+- `Testcontainers.MariaDb`
+- `Testcontainers.MongoDB`
+- `Testcontainers.MsSql`
+- `Testcontainers.MySql`
+- `Testcontainers.Oracle`
+- `Testcontainers.PostgreSql`
+- `Testcontainers.Redis`
 
-**Message Queues (5+ modules):**
-- `Testcontainers.Kafka`, `Testcontainers.RabbitMq`, `Testcontainers.Redpanda`
-- `Testcontainers.Pulsar`, `Testcontainers.NATS`
+**Message Queues (5+ modules)**:
+- `Testcontainers.Kafka`
+- `Testcontainers.NATS`
+- `Testcontainers.Pulsar`
+- `Testcontainers.RabbitMq`
+- `Testcontainers.Redpanda`
 
-**Search & Storage (5+ modules):**
-- `Testcontainers.Elasticsearch`, `Testcontainers.Minio`
-- `Testcontainers.Azurite`, `Testcontainers.LocalStack`
+**Search & Storage (5+ modules)**:
+- `Testcontainers.Azurite`
+- `Testcontainers.Elasticsearch`
+- `Testcontainers.LocalStack`
+- `Testcontainers.Minio`
 - `Testcontainers.Qdrant`
 
-**Cloud & Infrastructure (5+ modules):**
-- `Testcontainers.LocalStack` (AWS services)
+**Cloud & Infrastructure (5+ modules)**:
 - `Testcontainers.Azurite` (Azure Storage)
 - `Testcontainers.GCloud` (Google Cloud)
-- `Testcontainers.Consul`, `Testcontainers.Vault`
+- `Testcontainers.LocalStack` (AWS services)
+- `Testcontainers.Consul`
+- `Testcontainers.Vault`
 
-**Development Tools (10+ modules):**
+**Development Tools (10+ modules)**:
 - `Testcontainers.WebDriver` (Selenium)
-- `Testcontainers.MockServer`, `Testcontainers.Neo4j`
-- `Testcontainers.Keycloak`, `Testcontainers.Grafana`
+- `Testcontainers.Grafana`
+- `Testcontainers.Keycloak`
+- `Testcontainers.MockServer`
+- `Testcontainers.Neo4j`
 
 #### Basic Module Usage Pattern
 
 ```csharp
+// NuGet dependencies:
+// - dotnet add package Npgsql
+// - dotnet add package Testcontainers.PostgreSql
+// - dotnet add package xunit.v3
+
+using Npgsql;
 using Testcontainers.PostgreSql;
 using Xunit;
 
 public class DatabaseTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
-        .Build();
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         // Start the container
         await _postgres.StartAsync();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         // Clean up the container
         await _postgres.DisposeAsync();
@@ -157,16 +182,15 @@ public class DatabaseTests : IAsyncLifetime
     [Fact]
     public async Task ConnectionTest()
     {
-        // Get connection string - credentials auto-generated
-        var connectionString = _postgres.GetConnectionString();
+        // Get the connection string (credentials auto-generated)
         // connectionString: "Host=localhost;Port=49153;Database=postgres;Username=postgres;Password=..."
+        var connectionString = _postgres.GetConnectionString();
 
-        // Use with Npgsql
         await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
 
         await using var command = new NpgsqlCommand("SELECT 1", connection);
-        var result = await command.ExecuteScalarAsync();
+        var result = await command.ExecuteScalarAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(1, result);
     }
@@ -180,8 +204,7 @@ Modules use a fluent builder API for configuration:
 **Level 1: Basic Configuration**
 
 ```csharp
-var postgres = new PostgreSqlBuilder()
-    .WithImage("postgres:16-alpine")
+var postgres = new PostgreSqlBuilder("postgres:16-alpine")
     .WithDatabase("myapp_test")
     .WithUsername("custom_user")
     .WithPassword("custom_pass")
@@ -192,35 +215,31 @@ var postgres = new PostgreSqlBuilder()
 
 ```csharp
 // PostgreSQL with init scripts
-var postgres = new PostgreSqlBuilder()
-    .WithImage("postgres:16-alpine")
+var postgres = new PostgreSqlBuilder("postgres:16-alpine")
     .WithDatabase("myapp_test")
     .WithResourceMapping("./init.sql", "/docker-entrypoint-initdb.d/init.sql")
-    .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(5432)))
     .Build();
 
 // Redis with custom configuration
-var redis = new RedisBuilder()
-    .WithImage("redis:7-alpine")
+var redis = new RedisBuilder("redis:7-alpine")
     .WithCommand("redis-server", "--maxmemory", "256mb")
     .Build();
 
 // Kafka with custom configuration
-var kafka = new KafkaBuilder()
-    .WithImage("confluentinc/confluent-local:7.5.0")
+var kafka = new KafkaBuilder("confluentinc/cp-kafka:7.5.12")
+    .WithKRaft()
     .Build();
 ```
 
 **Level 3: Network and Environment Configuration**
 
 ```csharp
-var postgres = new PostgreSqlBuilder()
-    .WithImage("postgres:16-alpine")
+var postgres = new PostgreSqlBuilder("postgres:16-alpine")
     .WithEnvironment("POSTGRES_INITDB_ARGS", "-E UTF8")
-    .WithPortBinding(5432, 5432) // Optional: fixed port (not recommended for CI)
-    .WithBindMount("/host/path", "/container/path")
+    .WithLabel("environment", "test")
     .WithTmpfsMount("/tmp")
-    .WithLabel("test", "integration")
+    .WithBindMount("/host/path", "/container/path") // Optional: mount directory or file (not recommended)
+    .WithPortBinding(5432, 5432) // Optional: fixed port (not recommended)
     .Build();
 ```
 
@@ -230,32 +249,32 @@ Most modules provide convenience methods:
 
 ```csharp
 // PostgreSQL: Get connection string
-var postgres = new PostgreSqlBuilder().Build();
+var postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
 await postgres.StartAsync();
 var connStr = postgres.GetConnectionString();
 
 // SQL Server: Get connection string
-var mssql = new MsSqlBuilder().Build();
+var mssql = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04").Build();
 await mssql.StartAsync();
 var connStr = mssql.GetConnectionString();
 
 // MongoDB: Get connection string
-var mongo = new MongoDbBuilder().Build();
+var mongo = new MongoDbBuilder("mongo:6.0").Build();
 await mongo.StartAsync();
 var connStr = mongo.GetConnectionString();
 
 // Redis: Get connection string
-var redis = new RedisBuilder().Build();
+var redis = new RedisBuilder("redis:7-alpine").Build();
 await redis.StartAsync();
 var connStr = redis.GetConnectionString();
 
 // Kafka: Get bootstrap address
-var kafka = new KafkaBuilder().Build();
+var kafka = new KafkaBuilder("confluentinc/cp-kafka:7.5.12").Build();
 await kafka.StartAsync();
 var bootstrapAddress = kafka.GetBootstrapAddress();
 
 // Elasticsearch: Get connection string
-var elasticsearch = new ElasticsearchBuilder().Build();
+var elasticsearch = new ElasticsearchBuilder("elasticsearch:8.6.1").Build();
 await elasticsearch.StartAsync();
 var connStr = elasticsearch.GetConnectionString();
 ```
@@ -263,12 +282,13 @@ var connStr = elasticsearch.GetConnectionString();
 #### Finding the Right Module
 
 1. **Browse available modules**: https://testcontainers.com/modules/?language=dotnet (complete, up-to-date list)
-2. **Browse NuGet packages**: Search for "Testcontainers." on [NuGet.org](https://www.nuget.org/packages?q=testcontainers)
+2. **Browse NuGet packages**: Search for "Testcontainers" on [NuGet.org](https://www.nuget.org/packages?q=testcontainers)
 3. **Official documentation**: https://dotnet.testcontainers.org/
 4. **GitHub repository**: https://github.com/testcontainers/testcontainers-dotnet
-5. **Module examples**: Each module has examples in the repository
+5. **Module examples**: Each module has examples/tests in the repository
 
-**Module naming pattern:**
+**Module naming pattern**:
+
 ```
 Testcontainers.<ServiceName>
 ```
@@ -282,24 +302,28 @@ When no pre-configured module exists, use generic containers with `ContainerBuil
 **IMPORTANT: Always add a wait strategy** to ensure the container is ready before tests run. This is critical for reliability, especially in CI environments.
 
 ```csharp
+// NuGet dependencies:
+// - dotnet add package Testcontainers
+// - dotnet add package xunit.v3
+
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
+using Xunit;
 
 public class CustomContainerTests : IAsyncLifetime
 {
-    private readonly IContainer _container = new ContainerBuilder()
-        .WithImage("custom-image:latest")
-        .WithPortBinding(8080, true) // Random host port
+    private readonly IContainer _container = new ContainerBuilder("custom-image:latest")
+        .WithPortBinding(8080, true) // Random host port (recommended)
         .WithEnvironment("APP_ENV", "test")
         .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(8080).ForPath("/")))
         .Build();
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await _container.StartAsync();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _container.DisposeAsync();
     }
@@ -310,14 +334,17 @@ public class CustomContainerTests : IAsyncLifetime
         // Get the mapped port
         var port = _container.GetMappedPublicPort(8080);
         var hostname = _container.Hostname;
+
+        // Always use the Hostname property to create a connection string. TC ensures that
+        // the correct host is resolved based on the container runtime environment.
         var endpoint = $"http://{hostname}:{port}";
 
-        Assert.NotEmpty(endpoint);
+        Assert.True(port > 0, $"Port value must be greater than 0. Actual value: '{port}'.");
     }
 }
 ```
 
-**Common generic container options:**
+**Common generic container options**:
 
 ```csharp
 var container = new ContainerBuilder()
@@ -325,7 +352,7 @@ var container = new ContainerBuilder()
 
     // Ports
     .WithPortBinding(80, true)          // Random host port
-    .WithPortBinding(443, 8443)         // Fixed host port (not recommended for CI)
+    .WithPortBinding(443, 8443)         // Fixed port (not recommended)
     .WithExposedPort(80)                // Expose without binding
 
     // Environment
@@ -338,6 +365,7 @@ var container = new ContainerBuilder()
 
     // Files and Mounts
     .WithResourceMapping("./config.yml", "/app/config.yml")
+    // Mount directory or file (not recommended; its recommended to copy files into the container using WithResourceMapping(...))
     .WithBindMount("/host/path", "/container/path")
     .WithBindMount("/host/path", "/container/path", AccessMode.ReadOnly)
     .WithTmpfsMount("/tmp")
@@ -370,23 +398,27 @@ var container = new ContainerBuilder()
 **xUnit (Recommended Pattern with IAsyncLifetime)**
 
 ```csharp
+// NuGet dependencies:
+// - dotnet add package Npgsql
+// - dotnet add package Testcontainers.PostgreSql
+// - dotnet add package xunit.v3
+
+using Npgsql;
 using Testcontainers.PostgreSql;
 using Xunit;
 
-public class DatabaseTests : IAsyncLifetime
+public sealed class DatabaseTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
-        .Build();
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
 
     // Called before each test
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await _postgres.StartAsync();
     }
 
     // Called after each test
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _postgres.DisposeAsync();
     }
@@ -397,7 +429,7 @@ public class DatabaseTests : IAsyncLifetime
         var connectionString = _postgres.GetConnectionString();
 
         await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
 
         Assert.NotNull(connection);
     }
@@ -407,22 +439,24 @@ public class DatabaseTests : IAsyncLifetime
 **xUnit with Class Fixture (Shared Container)**
 
 ```csharp
+// NuGet dependencies:
+// - dotnet add package Testcontainers.PostgreSql
+// - dotnet add package xunit.v3
+
 using Testcontainers.PostgreSql;
 using Xunit;
 
 // Fixture: Container shared across multiple tests in the class
 public class DatabaseFixture : IAsyncLifetime
 {
-    public PostgreSqlContainer Postgres { get; } = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
-        .Build();
+    public PostgreSqlContainer Postgres { get; } = new PostgreSqlBuilder("postgres:16-alpine").Build();
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await Postgres.StartAsync();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await Postgres.DisposeAsync();
     }
@@ -450,21 +484,23 @@ public class DatabaseTests : IClassFixture<DatabaseFixture>
 **NUnit**
 
 ```csharp
+// NuGet dependencies:
+// - dotnet add package Npgsql
+// - dotnet add package NUnit
+// - dotnet add package Testcontainers.PostgreSql
+
+using Npgsql;
 using Testcontainers.PostgreSql;
 using NUnit.Framework;
 
 [TestFixture]
 public class DatabaseTests
 {
-    private PostgreSqlContainer _postgres;
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
 
     [OneTimeSetUp]
     public async Task OneTimeSetUp()
     {
-        _postgres = new PostgreSqlBuilder()
-            .WithImage("postgres:16-alpine")
-            .Build();
-
         await _postgres.StartAsync();
     }
 
@@ -490,34 +526,35 @@ public class DatabaseTests
 **MSTest**
 
 ```csharp
+// NuGet dependencies:
+// - dotnet add package MSTest.TestFramework
+// - dotnet add package Npgsql
+// - dotnet add package Testcontainers.PostgreSql
+
+using Npgsql;
 using Testcontainers.PostgreSql;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 [TestClass]
 public class DatabaseTests
 {
-    private static PostgreSqlContainer _postgres;
+    private static readonly PostgreSqlContainer Postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
 
     [ClassInitialize]
     public static async Task ClassInitialize(TestContext context)
     {
-        _postgres = new PostgreSqlBuilder()
-            .WithImage("postgres:16-alpine")
-            .Build();
-
-        await _postgres.StartAsync();
+        await Postgres.StartAsync();
     }
 
     [ClassCleanup]
     public static async Task ClassCleanup()
     {
-        await _postgres.DisposeAsync();
+        await Postgres.DisposeAsync();
     }
 
     [TestMethod]
     public async Task CanConnectToDatabase()
     {
-        var connectionString = _postgres.GetConnectionString();
+        var connectionString = Postgres.GetConnectionString();
 
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
@@ -529,42 +566,34 @@ public class DatabaseTests
 
 #### Theory/Parameterized Tests
 
-**xUnit Theory:**
+**xUnit Theory**:
 
 ```csharp
-public class VersionTests : IAsyncLifetime
+// NuGet dependencies:
+// - dotnet add package Npgsql
+// - dotnet add package Testcontainers.PostgreSql
+// - dotnet add package xunit.v3
+
+using Npgsql;
+using Testcontainers.PostgreSql;
+using Xunit;
+
+public class VersionTests
 {
-    private PostgreSqlContainer _postgres;
-
-    public async Task InitializeAsync()
-    {
-        // Will be called before each test
-        await Task.CompletedTask;
-    }
-
-    public async Task DisposeAsync()
-    {
-        if (_postgres != null)
-        {
-            await _postgres.DisposeAsync();
-        }
-    }
-
     [Theory]
     [InlineData("postgres:14-alpine")]
     [InlineData("postgres:15-alpine")]
     [InlineData("postgres:16-alpine")]
     public async Task TestMultipleVersions(string image)
     {
-        _postgres = new PostgreSqlBuilder()
-            .WithImage(image)
-            .Build();
+        await using var postgres = new PostgreSqlBuilder(image).Build();
 
-        await _postgres.StartAsync();
+        await postgres.StartAsync(TestContext.Current.CancellationToken);
 
-        var connectionString = _postgres.GetConnectionString();
+        var connectionString = postgres.GetConnectionString();
+
         await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
 
         Assert.NotNull(connection);
     }
@@ -578,8 +607,15 @@ public class VersionTests : IAsyncLifetime
 #### Connecting Multiple Containers
 
 ```csharp
+// NuGet dependencies:
+// - dotnet add package Testcontainers.PostgreSql
+// - dotnet add package xunit.v3
+
 using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Networks;
+using Testcontainers.PostgreSql;
+using Xunit;
 
 public class MultiContainerTests : IAsyncLifetime
 {
@@ -587,38 +623,34 @@ public class MultiContainerTests : IAsyncLifetime
     private PostgreSqlContainer _postgres;
     private IContainer _app;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         // Create custom network
         _network = new NetworkBuilder()
             .Build();
 
-        await _network.CreateAsync();
-
         // Start database on network
-        _postgres = new PostgreSqlBuilder()
-            .WithImage("postgres:16-alpine")
+        _postgres = new PostgreSqlBuilder("postgres:16-alpine")
             .WithNetwork(_network)
             .WithNetworkAliases("database")
             .Build();
 
-        await _postgres.StartAsync();
-
-        // Start application on same network
-        _app = new ContainerBuilder()
-            .WithImage("myapp:latest")
+        // Start app on network
+        _app = new ContainerBuilder("custom-image:latest")
             .WithNetwork(_network)
             .WithNetworkAliases("app")
-            .WithEnvironment("DB_HOST", "database")      // Use network alias
-            .WithEnvironment("DB_PORT", "5432")          // Internal port
+            .WithEnvironment("DB_HOST", "database") // Use network alias to connect to the DB
+            .WithEnvironment("DB_PORT", "5432") // Use internal DB port
             .WithPortBinding(8080, true)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(8080).ForPath("/")))
             .Build();
 
+        await _network.CreateAsync();
+        await _postgres.StartAsync();
         await _app.StartAsync();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _app.DisposeAsync();
         await _postgres.DisposeAsync();
@@ -626,19 +658,19 @@ public class MultiContainerTests : IAsyncLifetime
     }
 
     [Fact]
-    public void ApplicationCanCommunicateWithDatabase()
+    public void AppCanCommunicateWithDatabase()
     {
-        var appEndpoint = $"http://{_app.Hostname}:{_app.GetMappedPublicPort(8080)}";
-        Assert.NotEmpty(appEndpoint);
+        var endpoint = $"http://{_app.Hostname}:{_app.GetMappedPublicPort(8080)}";
+        Assert.NotEmpty(endpoint);
     }
 }
 ```
 
-#### Accessing Container Ports
+#### Accessing Container Services
 
 ```csharp
 [Fact]
-public void GetPortInformation()
+public void GetServiceInformation()
 {
     // Method 1: Get mapped public port
     var publicPort = _container.GetMappedPublicPort(80);
@@ -646,7 +678,7 @@ public void GetPortInformation()
 
     // Method 2: Get hostname
     var hostname = _container.Hostname;
-    // hostname = "localhost" (or docker host)
+    // hostname = "localhost" (or Docker host)
 
     // Method 3: Build full endpoint
     var endpoint = $"http://{_container.Hostname}:{_container.GetMappedPublicPort(80)}";
@@ -665,17 +697,19 @@ public void GetPortInformation()
 ```csharp
 public class DatabaseTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder().Build();
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await _postgres.StartAsync();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
+        // Disposing of the container explicitly (resource) is not necessary. TC tracks
+        // resources and cleans them up automatically. However, disposing of them when they
+        // are no longer needed is considered best practice.
         await _postgres.DisposeAsync();
-        // Container automatically cleaned up
     }
 }
 ```
@@ -686,7 +720,7 @@ public class DatabaseTests : IAsyncLifetime
 [Fact]
 public async Task TestWithDisposable()
 {
-    await using var postgres = new PostgreSqlBuilder().Build();
+    await using var postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
     await postgres.StartAsync();
 
     // Use container...
@@ -701,7 +735,7 @@ public async Task TestWithDisposable()
 [Fact]
 public async Task TestWithExplicitCleanup()
 {
-    var postgres = new PostgreSqlBuilder().Build();
+    var postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
 
     try
     {
@@ -718,28 +752,27 @@ public async Task TestWithExplicitCleanup()
 
 #### Automatic Cleanup with Ryuk
 
-Testcontainers for .NET uses **Ryuk**, a garbage collector that automatically cleans up containers even if tests crash or timeout:
+Testcontainers for .NET uses **[Ryuk](https://github.com/testcontainers/moby-ryuk)**, a garbage collector that automatically cleans up containers even if tests crash or timeout:
 
-- Runs as a sidecar container (`testcontainers/ryuk:0.13.0`)
+- Runs as a sidecar container (e.g., `testcontainers/ryuk:0.14.0`)
 - Monitors test session lifecycle
 - Cleans up containers when session ends
 - Handles parallel test execution
 
-**Control Ryuk behavior:**
+**Control Ryuk behavior**:
 
 ```csharp
 // Disable Ryuk (not recommended)
 Environment.SetEnvironmentVariable("TESTCONTAINERS_RYUK_DISABLED", "true");
 
 // Custom Ryuk image
-Environment.SetEnvironmentVariable("TESTCONTAINERS_RYUK_CONTAINER_IMAGE", "testcontainers/ryuk:0.13.0");
+Environment.SetEnvironmentVariable("TESTCONTAINERS_RYUK_CONTAINER_IMAGE", "testcontainers/ryuk:0.14.0");
 ```
 
-**Cleanup options:**
+**Cleanup options**:
 
 ```csharp
-var container = new ContainerBuilder()
-    .WithImage("nginx:alpine")
+var container = new ContainerBuilder("nginx:alpine")
     .WithCleanUp(true)  // Enable auto-cleanup (default: true)
     .Build();
 ```
@@ -751,16 +784,13 @@ var container = new ContainerBuilder()
 #### Environment Variables
 
 ```csharp
-var container = new ContainerBuilder()
-    .WithImage("myapp:latest")
+var container = new ContainerBuilder("custom-image:latest")
     .WithEnvironment("DATABASE_URL", "postgres://localhost/db")
     .WithEnvironment("LOG_LEVEL", "debug")
-    .WithEnvironment("API_KEY", "test-key")
     .Build();
 
-// Or with dictionary
-var container = new ContainerBuilder()
-    .WithImage("myapp:latest")
+// Or with a dictionary
+var container = new ContainerBuilder("custom-image:latest")
     .WithEnvironment(new Dictionary<string, string>
     {
         ["DATABASE_URL"] = "postgres://localhost/db",
@@ -775,15 +805,12 @@ var container = new ContainerBuilder()
 [Fact]
 public async Task ExecuteCommandInContainer()
 {
-    await using var container = new ContainerBuilder()
-        .WithImage("alpine:latest")
+    await using var container = new ContainerBuilder("alpine:3:23")
         .WithCommand("tail", "-f", "/dev/null")  // Keep container running
-        .WithWaitStrategy(Wait.ForUnixContainer().UntilCommandIsCompleted("echo", "ready"))
         .Build();
 
     await container.StartAsync();
 
-    // Execute command
     var execResult = await container.ExecAsync(new[] { "echo", "Hello, World!" });
 
     Assert.Equal(0, execResult.ExitCode);
@@ -797,15 +824,13 @@ public async Task ExecuteCommandInContainer()
 [Fact]
 public async Task ReadContainerLogs()
 {
-    await using var container = new ContainerBuilder()
-        .WithImage("nginx:alpine")
+    await using var container = new ContainerBuilder("nginx:alpine")
         .WithPortBinding(80, true)
         .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(80).ForPath("/")))
         .Build();
 
     await container.StartAsync();
 
-    // Read logs
     var (stdout, stderr) = await container.GetLogsAsync();
 
     Assert.NotEmpty(stdout);
@@ -816,27 +841,23 @@ public async Task ReadContainerLogs()
 
 ```csharp
 // Copy file to container
-var container = new ContainerBuilder()
-    .WithImage("nginx:alpine")
-    .WithResourceMapping("./nginx.conf", "/etc/nginx/nginx.conf")
+var container = new ContainerBuilder("nginx:alpine")
+    .WithResourceMapping("./nginx.conf", "/etc/nginx/")
     .Build();
 
 // Copy multiple files
-var container = new ContainerBuilder()
-    .WithImage("myapp:latest")
-    .WithResourceMapping("./config.yml", "/app/config.yml")
-    .WithResourceMapping("./secrets.json", "/app/secrets.json")
+var container = new ContainerBuilder("custom-image:latest")
+    .WithResourceMapping("./config.yml", "/app/")
+    .WithResourceMapping("./secrets.json", "/app/")
     .Build();
 
 // Bind mount
-var container = new ContainerBuilder()
-    .WithImage("postgres:16")
+var container = new ContainerBuilder("postgres:16")
     .WithBindMount("/host/data", "/var/lib/postgresql/data")
     .Build();
 
 // Read-only bind mount
-var container = new ContainerBuilder()
-    .WithImage("myapp:latest")
+var container = new ContainerBuilder("custom-image:latest")
     .WithBindMount("/host/config", "/app/config", AccessMode.ReadOnly)
     .Build();
 
@@ -848,31 +869,27 @@ var fileContent = await container.ReadFileAsync("/etc/nginx/nginx.conf");
 #### Volume Mounts
 
 ```csharp
-using DotNet.Testcontainers.Volumes;
-
 public class VolumeTests : IAsyncLifetime
 {
     private IVolume _volume;
     private IContainer _container;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         // Create volume
         _volume = new VolumeBuilder()
             .Build();
 
-        await _volume.CreateAsync();
-
         // Use volume in container
-        _container = new ContainerBuilder()
-            .WithImage("postgres:16")
+        _container = new ContainerBuilder("postgres:16-alpine")
             .WithVolumeMount(_volume, "/var/lib/postgresql/data")
             .Build();
 
+        await _volume.CreateAsync();
         await _container.StartAsync();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _container.DisposeAsync();
         await _volume.DeleteAsync();
@@ -883,8 +900,7 @@ public class VolumeTests : IAsyncLifetime
 #### Temporary Filesystems
 
 ```csharp
-var container = new ContainerBuilder()
-    .WithImage("myapp:latest")
+var container = new ContainerBuilder("custom-image:latest")
     .WithTmpfsMount("/tmp")
     .WithTmpfsMount("/app/temp")
     .Build();
@@ -896,7 +912,7 @@ var container = new ContainerBuilder()
 
 **Wait strategies are critical for reliable tests.** They ensure containers are fully ready before tests run, which is especially important in CI environments where timing can vary.
 
-**Best Practices:**
+**Best Practices**:
 - ✅ **Always use wait strategies for services** - Ensures reliability
 - ✅ **Choose appropriate wait strategies** based on your service
 - ❌ **Never use `Task.Delay()` or `Thread.Sleep()`** - This is an anti-pattern that leads to flaky tests
@@ -905,10 +921,7 @@ var container = new ContainerBuilder()
 #### HTTP-Based Waiting (Recommended for Web Services)
 
 ```csharp
-using DotNet.Testcontainers.Configurations;
-
-var container = new ContainerBuilder()
-    .WithImage("nginx:alpine")
+var container = new ContainerBuilder("nginx:alpine")
     .WithPortBinding(80, true)
     .WithWaitStrategy(Wait.ForUnixContainer()
         .UntilHttpRequestIsSucceeded(r => r.ForPort(80).ForPath("/")))
@@ -918,26 +931,22 @@ var container = new ContainerBuilder()
 #### Log-Based Waiting
 
 ```csharp
-var container = new ContainerBuilder()
-    .WithImage("elasticsearch:8.7.0")
+var container = new ContainerBuilder("elasticsearch:8.7.0")
     .WithWaitStrategy(Wait.ForUnixContainer()
         .UntilMessageIsLogged("started"))
     .Build();
 
 // Wait for specific log message with timeout
-var container = new ContainerBuilder()
-    .WithImage("myapp:latest")
+var container = new ContainerBuilder("elasticsearch:8.7.0")
     .WithWaitStrategy(Wait.ForUnixContainer()
-        .UntilMessageIsLogged("Application started")
-        .WithTimeout(TimeSpan.FromMinutes(2)))
+        .UntilMessageIsLogged("started", o => o.WithTimeout(TimeSpan.FromMinutes(5))))
     .Build();
 ```
 
 #### HTTP-Based Waiting
 
 ```csharp
-var container = new ContainerBuilder()
-    .WithImage("myapp:latest")
+var container = new ContainerBuilder("custom-image:latest")
     .WithPortBinding(8080, true)
     .WithWaitStrategy(Wait.ForUnixContainer()
         .UntilHttpRequestIsSucceeded(request => request
@@ -950,8 +959,7 @@ var container = new ContainerBuilder()
 #### Command-Based Waiting
 
 ```csharp
-var container = new ContainerBuilder()
-    .WithImage("postgres:16")
+var container = new ContainerBuilder("postgres:16-alpine")
     .WithWaitStrategy(Wait.ForUnixContainer()
         .UntilCommandIsCompleted("pg_isready"))
     .Build();
@@ -960,8 +968,7 @@ var container = new ContainerBuilder()
 #### Multiple Wait Strategies
 
 ```csharp
-var container = new ContainerBuilder()
-    .WithImage("myapp:latest")
+var container = new ContainerBuilder("custom-image:latest")
     .WithPortBinding(8080, true)
     .WithWaitStrategy(Wait.ForUnixContainer()
         .UntilHttpRequestIsSucceeded(r => r.ForPort(8080).ForPath("/"))
@@ -973,8 +980,7 @@ var container = new ContainerBuilder()
 #### Custom Wait Strategies
 
 ```csharp
-var container = new ContainerBuilder()
-    .WithImage("myapp:latest")
+var container = new ContainerBuilder("custom-image:latest")
     .WithWaitStrategy(Wait.ForUnixContainer()
         .AddCustomWaitStrategy(new MyCustomWaitStrategy()))
     .Build();
@@ -1010,20 +1016,16 @@ public void CheckDockerConnection()
 [Fact]
 public async Task DebugWithLogging()
 {
-    await using var container = new ContainerBuilder()
-        .WithImage("myapp:latest")
+    await using var container = new ContainerBuilder("custom-image:latest")
         .WithPortBinding(8080, true)
         .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(8080).ForPath("/")))
         .Build();
 
     await container.StartAsync();
 
-    // Read logs
     var (stdout, stderr) = await container.GetLogsAsync();
     _output.WriteLine($"STDOUT:\n{stdout}");
     _output.WriteLine($"STDERR:\n{stderr}");
-
-    // Verify container is running
     _output.WriteLine($"Container ID: {container.Id}");
 }
 ```
@@ -1033,12 +1035,9 @@ public async Task DebugWithLogging()
 **Issue: Container startup timeout**
 
 ```csharp
-// Increase wait timeout
-var container = new ContainerBuilder()
-    .WithImage("slow-starting-app:latest")
+var container = new ContainerBuilder("slow-starting-app:latest")
     .WithWaitStrategy(Wait.ForUnixContainer()
-        .UntilHttpRequestIsSucceeded(r => r.ForPort(8080).ForPath("/"))
-        .WithTimeout(TimeSpan.FromMinutes(5)))  // Increase timeout
+        .UntilHttpRequestIsSucceeded(r => r.ForPort(8080).ForPath("/"), o => o.WithTimeout(TimeSpan.FromMinutes(5)))
     .Build();
 ```
 
@@ -1051,7 +1050,7 @@ var container = new ContainerBuilder()
 
 ```bash
 # Pull manually first to verify
-docker pull postgres:16
+docker pull postgres:16-alpine
 
 # For private registries, login first
 docker login registry.example.com
@@ -1081,7 +1080,7 @@ Environment.SetEnvironmentVariable("DOCKER_HOST", "tcp://localhost:2375");
 Environment.SetEnvironmentVariable("TESTCONTAINERS_RYUK_DISABLED", "true");
 
 // Custom Ryuk image
-Environment.SetEnvironmentVariable("TESTCONTAINERS_RYUK_CONTAINER_IMAGE", "testcontainers/ryuk:0.13.0");
+Environment.SetEnvironmentVariable("TESTCONTAINERS_RYUK_CONTAINER_IMAGE", "testcontainers/ryuk:0.14.0");
 
 // Hub image name prefix (for private registries)
 Environment.SetEnvironmentVariable("TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX", "my.registry.com/");
@@ -1100,14 +1099,13 @@ using Xunit;
 
 public class UserRepositoryTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
         .WithDatabase("testdb")
         .WithUsername("testuser")
         .WithPassword("testpass")
         .Build();
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await _postgres.StartAsync();
 
@@ -1126,7 +1124,7 @@ public class UserRepositoryTests : IAsyncLifetime
         await command.ExecuteNonQueryAsync();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _postgres.DisposeAsync();
     }
@@ -1134,11 +1132,9 @@ public class UserRepositoryTests : IAsyncLifetime
     [Fact]
     public async Task CreateUser_ShouldInsertUser()
     {
-        // Arrange
         await using var connection = new NpgsqlConnection(_postgres.GetConnectionString());
-        await connection.OpenAsync();
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
 
-        // Act
         await using var command = new NpgsqlCommand(
             "INSERT INTO users (name, email) VALUES (@name, @email) RETURNING id",
             connection);
@@ -1146,9 +1142,8 @@ public class UserRepositoryTests : IAsyncLifetime
         command.Parameters.AddWithValue("name", "Alice");
         command.Parameters.AddWithValue("email", "alice@example.com");
 
-        var userId = await command.ExecuteScalarAsync();
+        var userId = await command.ExecuteScalarAsync(TestContext.Current.CancellationToken);
 
-        // Assert
         Assert.NotNull(userId);
     }
 
@@ -1157,14 +1152,14 @@ public class UserRepositoryTests : IAsyncLifetime
     {
         // Arrange
         await using var connection = new NpgsqlConnection(_postgres.GetConnectionString());
-        await connection.OpenAsync();
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
 
         await using var insertCmd = new NpgsqlCommand(
             "INSERT INTO users (name, email) VALUES (@name, @email)",
             connection);
         insertCmd.Parameters.AddWithValue("name", "Bob");
         insertCmd.Parameters.AddWithValue("email", "bob@example.com");
-        await insertCmd.ExecuteNonQueryAsync();
+        await insertCmd.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
 
         // Act
         await using var selectCmd = new NpgsqlCommand(
@@ -1172,8 +1167,8 @@ public class UserRepositoryTests : IAsyncLifetime
             connection);
         selectCmd.Parameters.AddWithValue("email", "bob@example.com");
 
-        await using var reader = await selectCmd.ExecuteReaderAsync();
-        await reader.ReadAsync();
+        await using var reader = await selectCmd.ExecuteReaderAsync(TestContext.Current.CancellationToken);
+        await reader.ReadAsync(TestContext.Current.CancellationToken);
 
         var name = reader.GetString(0);
         var email = reader.GetString(1);
@@ -1194,14 +1189,12 @@ using Xunit;
 
 public class RedisCacheTests : IAsyncLifetime
 {
-    private readonly RedisContainer _redis = new RedisBuilder()
-        .WithImage("redis:7-alpine")
-        .Build();
+    private readonly RedisContainer _redis = new RedisBuilder("redis:7-alpine").Build();
 
     private IConnectionMultiplexer _connection;
     private IDatabase _db;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await _redis.StartAsync();
 
@@ -1209,42 +1202,38 @@ public class RedisCacheTests : IAsyncLifetime
         _db = _connection.GetDatabase();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
-        _connection?.Dispose();
+        _connection.Dispose();
         await _redis.DisposeAsync();
     }
 
     [Fact]
     public async Task SetAndGet_ShouldStoreAndRetrieveValue()
     {
-        // Act
         await _db.StringSetAsync("key1", "value1");
         var value = await _db.StringGetAsync("key1");
 
-        // Assert
         Assert.Equal("value1", value);
     }
 
     [Fact]
     public async Task SetWithExpiration_ShouldExpireKey()
     {
-        // Act
         await _db.StringSetAsync("key2", "value2", TimeSpan.FromSeconds(1));
         var valueBefore = await _db.StringGetAsync("key2");
 
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
 
         var valueAfter = await _db.StringGetAsync("key2");
 
-        // Assert
         Assert.Equal("value2", valueBefore);
         Assert.True(valueAfter.IsNull);
     }
 }
 ```
 
-### Example 3: SQL Server with Entity Framework Core
+### Example 3: SQL Server with Entity Framework Core (SqlServer)
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -1270,13 +1259,11 @@ public class User
 
 public class EntityFrameworkTests : IAsyncLifetime
 {
-    private readonly MsSqlContainer _mssql = new MsSqlBuilder()
-        .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
-        .Build();
+    private readonly MsSqlContainer _mssql = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest").Build();
 
     private ApplicationDbContext _dbContext;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await _mssql.StartAsync();
 
@@ -1288,7 +1275,7 @@ public class EntityFrameworkTests : IAsyncLifetime
         await _dbContext.Database.EnsureCreatedAsync();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _dbContext.DisposeAsync();
         await _mssql.DisposeAsync();
@@ -1297,20 +1284,16 @@ public class EntityFrameworkTests : IAsyncLifetime
     [Fact]
     public async Task AddUser_ShouldPersistToDatabase()
     {
-        // Arrange
         var user = new User
         {
             Name = "Alice",
             Email = "alice@example.com"
         };
 
-        // Act
         _dbContext.Users.Add(user);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        // Assert
-        var savedUser = await _dbContext.Users
-            .FirstOrDefaultAsync(u => u.Email == "alice@example.com");
+        var savedUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email == "alice@example.com", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(savedUser);
         Assert.Equal("Alice", savedUser.Name);
@@ -1327,16 +1310,14 @@ using Xunit;
 
 public class KafkaTests : IAsyncLifetime
 {
-    private readonly KafkaContainer _kafka = new KafkaBuilder()
-        .WithImage("confluentinc/confluent-local:7.5.0")
-        .Build();
+    private readonly KafkaContainer _kafka = new KafkaBuilder("confluentinc/confluent-local:7.5.0").Build();
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await _kafka.StartAsync();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _kafka.DisposeAsync();
     }
@@ -1344,11 +1325,9 @@ public class KafkaTests : IAsyncLifetime
     [Fact]
     public async Task ProduceAndConsume_ShouldTransferMessage()
     {
-        // Arrange
-        var topic = "test-topic";
+        const string topic = "test-topic";
         var bootstrapServers = _kafka.GetBootstrapAddress();
 
-        // Producer
         var producerConfig = new ProducerConfig
         {
             BootstrapServers = bootstrapServers
@@ -1356,7 +1335,6 @@ public class KafkaTests : IAsyncLifetime
 
         using var producer = new ProducerBuilder<string, string>(producerConfig).Build();
 
-        // Consumer
         var consumerConfig = new ConsumerConfig
         {
             BootstrapServers = bootstrapServers,
@@ -1372,11 +1350,10 @@ public class KafkaTests : IAsyncLifetime
         {
             Key = "key1",
             Value = "Hello, Kafka!"
-        });
+        }, TestContext.Current.CancellationToken);
 
         var consumeResult = consumer.Consume(TimeSpan.FromSeconds(10));
 
-        // Assert
         Assert.NotNull(consumeResult);
         Assert.Equal("Hello, Kafka!", consumeResult.Message.Value);
     }
@@ -1386,6 +1363,7 @@ public class KafkaTests : IAsyncLifetime
 ### Example 5: Multi-Container Application Stack
 
 ```csharp
+using System.Net;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Networks;
@@ -1400,33 +1378,24 @@ public class FullStackTests : IAsyncLifetime
     private RedisContainer _redis;
     private IContainer _app;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         // Create network
         _network = new NetworkBuilder().Build();
-        await _network.CreateAsync();
 
         // Start PostgreSQL
-        _postgres = new PostgreSqlBuilder()
-            .WithImage("postgres:16-alpine")
+        _postgres = new PostgreSqlBuilder("postgres:16-alpine")
             .WithNetwork(_network)
             .WithNetworkAliases("database")
             .Build();
 
-        await _postgres.StartAsync();
-
         // Start Redis
-        _redis = new RedisBuilder()
-            .WithImage("redis:7-alpine")
+        _redis = new RedisBuilder("redis:7-alpine")
             .WithNetwork(_network)
             .WithNetworkAliases("cache")
             .Build();
 
-        await _redis.StartAsync();
-
-        // Start application
-        _app = new ContainerBuilder()
-            .WithImage("myapp:latest")
+        _app = new ContainerBuilder("custom-image:latest")
             .WithNetwork(_network)
             .WithNetworkAliases("app")
             .WithEnvironment("DB_HOST", "database")
@@ -1437,10 +1406,13 @@ public class FullStackTests : IAsyncLifetime
             .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(8080).ForPath("/")))
             .Build();
 
+        await _network.CreateAsync();
+        await _postgres.StartAsync();
+        await _redis.StartAsync();
         await _app.StartAsync();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _app.DisposeAsync();
         await _redis.DisposeAsync();
@@ -1451,15 +1423,12 @@ public class FullStackTests : IAsyncLifetime
     [Fact]
     public async Task HealthCheck_ShouldReturnOk()
     {
-        // Arrange
         var endpoint = $"http://{_app.Hostname}:{_app.GetMappedPublicPort(8080)}";
 
         using var httpClient = new HttpClient();
 
-        // Act
-        var response = await httpClient.GetAsync($"{endpoint}/health");
+        var response = await httpClient.GetAsync($"{endpoint}/health", TestContext.Current.CancellationToken);
 
-        // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 }
@@ -1470,16 +1439,18 @@ public class FullStackTests : IAsyncLifetime
 ## Best Practices
 
 1. **Always use pre-configured modules when available** - They provide sensible defaults and helper methods
-2. **Use async lifecycle management** - Proper async initialization and cleanup (IAsyncLifetime in xUnit, [OneTimeSetUp]/[OneTimeTearDown] in NUnit, [ClassInitialize]/[ClassCleanup] in MSTest)
-3. **Always add wait strategies** - Ensures containers are ready before tests run; never use `Task.Delay()`
-4. **Choose appropriate wait strategies** - Use HTTP for health endpoints, logs for startup messages, or ports for availability
-5. **Test against multiple configurations** - Use parameterized tests to validate against different versions or configurations (Theory/InlineData in xUnit, TestCase in NUnit, DataRow in MSTest)
-6. **Use custom networks** - For multi-container communication
-7. **Keep containers ephemeral** - Don't rely on state between tests
-8. **Share containers when appropriate** - Use fixtures or setup methods to share containers across tests for better performance
-9. **Use module helper methods** - E.g., `GetConnectionString()`, `GetBootstrapAddress()`
-10. **Debug with logs** - Use `GetLogsAsync()` when troubleshooting
-11. **Use builder pattern** - Fluent API for clear, maintainable configuration
+1. **Use async lifecycle management** - Proper async initialization and cleanup (`IAsyncLifetime` in xUnit, `[OneTimeSetUp]`/`[OneTimeTearDown]` in NUnit, `[ClassInitialize]`/`[ClassCleanup]` in MSTest)
+1. **Always add wait strategies** - Ensures containers are ready before tests run; never use `Task.Delay()`
+1. **Use random assigned host ports** - Don't rely on fixed ports.
+1. **Copy configuration files to the container** - Don't rely on mounting files or directories.
+1. **Choose appropriate wait strategies** - Use HTTP for health endpoints, logs for startup messages, or ports for availability (port availability is usually avoided because ports are available before the service is ready to use)
+1. **Test against multiple configurations** - Use parameterized tests to validate against different versions or configurations (`Theory`/`InlineData` in xUnit, `TestCase` in NUnit, `DataRow` in MSTest)
+1. **Use custom networks** - For multi-container communication
+1. **Keep containers ephemeral** - Don't rely on state between tests
+1. **Share containers when appropriate** - Use fixtures or setup methods to share containers across tests for better performance
+1. **Use module helper methods** - E.g., `GetConnectionString()`, `GetBootstrapAddress()`
+1. **Debug with logs** - Use `GetLogsAsync()` when troubleshooting
+1. **Use builder pattern** - Fluent API for clear, maintainable configuration
 
 ---
 
