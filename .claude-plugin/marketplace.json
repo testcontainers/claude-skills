@@ -26,7 +26,7 @@
     {
       "name": "testcontainers-dotnet",
       "source": "./testcontainers-dotnet",
-      "description": "A comprehensive guide for using Testcontainers for .NET to write reliable integration tests with Docker containers in .NET projects. Supports 40+ pre-configured modules for databases, message queues, cloud services, and more.",
+      "description": "A comprehensive guide for using Testcontainers for .NET to write reliable integration tests with Docker containers in .NET projects. Supports 65+ pre-configured modules for databases, message queues, cloud services, and more.",
       "version": "1.0.0",
       "author": {
         "name": "Testcontainers",

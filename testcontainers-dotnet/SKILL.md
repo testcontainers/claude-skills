@@ -1,19 +1,20 @@
 ---
 name: testcontainers-dotnet
-description: A comprehensive guide for using Testcontainers for .NET to write reliable integration tests with Docker containers in .NET projects. Supports 40+ pre-configured modules for databases, message queues, cloud services, and more.
+description: A comprehensive guide for using Testcontainers for .NET (4.10.0+) to write reliable integration tests with Docker containers in .NET projects. Supports 65+ pre-configured modules for databases, message queues, cloud services, and more.
+applies_to: Testcontainers for .NET 4.10.0+
 license: MIT
 ---
 
 # Testcontainers for .NET Integration Testing
 
-A comprehensive guide for using Testcontainers for .NET to write reliable integration tests with Docker containers in .NET projects.
+A comprehensive guide for using Testcontainers for .NET (4.10.0+) to write reliable integration tests with Docker containers in .NET projects.
 
 ## Description
 
 This skill helps you write integration tests using Testcontainers for .NET, a .NET library that provides lightweight, throwaway instances of common databases, message queues, web browsers, or anything that can run in a Docker container.
 
 **Key capabilities**:
-- Use 40+ pre-configured modules for common services (databases, message queues, cloud services, etc.)
+- Use 65+ pre-configured modules for common services (databases, message queues, cloud services, etc.)
 - Set up and manage Docker containers in .NET tests (xUnit, NUnit, MSTest)
 - Configure networking, volumes, and environment variables
 - Implement proper cleanup and resource management
@@ -28,6 +29,11 @@ Use this skill when you need to:
 - Avoid mocking external dependencies in integration tests
 - Set up ephemeral test infrastructure
 
+## Decision Rule (Recommended)
+
+1. **If a pre-configured module exists for your service**, use the module.
+2. **If no module exists**, use a generic container with `ContainerBuilder` **and always define an explicit wait strategy**.
+
 ## Prerequisites
 
 - **Docker or Podman** installed and running
@@ -36,6 +42,79 @@ Use this skill when you need to:
 - **Test framework**: xUnit, NUnit, or MSTest
 
 ## Instructions
+
+### Quick Start (Framework-Agnostic)
+
+Use this when you want a minimal, reliable integration test setup without committing to xUnit/NUnit/MSTest patterns up front.
+
+1. Create (or choose) a test project using your preferred test framework.
+2. Add the Testcontainers module for your service (prefer modules over generic containers).
+3. Add the client library for the service you will connect to.
+4. Write a single test that:
+    - starts the container
+    - connects to the service and performs a small smoke operation
+    - disposes the container (for example, via `await using`)
+5. Run the test project.
+
+```bash
+# Example: PostgreSQL (module + client library)
+dotnet add package Testcontainers.PostgreSql
+dotnet add package Npgsql
+
+# Run your tests (command varies by runner, but this works for most)
+dotnet test
+```
+
+```csharp
+// NuGet dependencies:
+// - dotnet add package Npgsql
+// - dotnet add package Testcontainers.PostgreSql
+// - dotnet add package xunit.v3
+
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Npgsql;
+using Testcontainers.PostgreSql;
+
+public sealed class PostgresSmokeTest
+{
+    // Note: Add your framework's test attribute (e.g., [Fact]/[Test]/[TestMethod]).
+    public async Task CanQueryPostgres()
+    {
+        await using var postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
+        await postgres.StartAsync(CancellationToken.None);
+
+        await using var connection = new NpgsqlConnection(postgres.GetConnectionString());
+        await connection.OpenAsync(CancellationToken.None);
+
+        await using var command = new NpgsqlCommand("SELECT 1", connection);
+        var result = await command.ExecuteScalarAsync(CancellationToken.None);
+
+        if (!Equals(result, 1))
+        {
+            throw new InvalidOperationException($"Expected SELECT 1 to return 1. Actual: {result}");
+        }
+    }
+}
+```
+
+### What I Need From You (Checklist)
+
+When you ask for help, include these details so the generated test code matches your environment:
+
+- **Test framework**: xUnit / NUnit / MSTest (and version if relevant)
+- **.NET version**: e.g., net8.0
+- **Container runtime**: Docker Desktop / Docker Engine / Podman (and OS)
+- **Service under test**: PostgreSQL / Redis / SQL Server / Kafka / ...
+- **Image + tag**: e.g., `postgres:16-alpine` (pin versions for CI stability)
+- **How the test should connect**: host port mapping vs container-to-container network
+- **Readiness signal**: HTTP endpoint, log line, command (if you know it)
+- **Data setup**: schema/init scripts, seed data, migrations (and where they live)
+- **Lifecycle**: per-test container vs shared fixture (performance vs isolation)
+- **Parallelism/CI**: Will tests run in parallel? Any CI constraints/timeouts?
+
+If you do not know an item, say so (the default recommendation is: module + explicit wait strategy + random host ports + dispose in teardown).
 
 ### 1. Installation & Setup
 
@@ -76,6 +155,8 @@ dotnet add package Testcontainers.Elasticsearch
 
 **Verify Docker availability**:
 
+Note: Testcontainers usually fails (throws) when **creating/starting containers or other resources** if no container runtime is reachable. The snippet below is a lightweight sanity check that helps you see what configuration Testcontainers resolves on the current machine.
+
 ```csharp
 using DotNet.Testcontainers.Configurations;
 using Xunit;
@@ -83,9 +164,6 @@ using Xunit;
 [Fact]
 public void DockerIsAvailable()
 {
-    // This will throw an exception if TC's auto-discovery mechanism does not find a
-    // running container runtime. This specific test is usually not necessary; it just
-    // helps in cases to better understand which runtime TC selects.
     var testcontainersConfiguration = TestcontainersSettings.OS;
     Assert.NotNull(testcontainersConfiguration);
 }
@@ -95,7 +173,7 @@ public void DockerIsAvailable()
 
 ### 2. Using Pre-Configured Modules (Recommended Approach)
 
-**Testcontainers for .NET provides 40+ pre-configured modules** that offer production-ready configurations, sensible defaults, and helper methods. **Always prefer modules over generic containers** when available.
+**Testcontainers for .NET provides 65+ pre-configured modules** that offer production-ready configurations, sensible defaults, and helper methods. **Always prefer modules over generic containers** when available.
 
 #### Why Use Modules?
 
@@ -163,27 +241,24 @@ using Npgsql;
 using Testcontainers.PostgreSql;
 using Xunit;
 
-public class DatabaseTests : IAsyncLifetime
+public sealed class DatabaseTests : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
 
     public async ValueTask InitializeAsync()
     {
-        // Start the container
         await _postgres.StartAsync();
     }
 
     public async ValueTask DisposeAsync()
     {
-        // Clean up the container
         await _postgres.DisposeAsync();
     }
 
     [Fact]
     public async Task ConnectionTest()
     {
-        // Get the connection string (credentials auto-generated)
-        // connectionString: "Host=localhost;Port=49153;Database=postgres;Username=postgres;Password=..."
+        // Includes mapped port and generated credentials.
         var connectionString = _postgres.GetConnectionString();
 
         await using var connection = new NpgsqlConnection(connectionString);
@@ -248,35 +323,35 @@ var postgres = new PostgreSqlBuilder("postgres:16-alpine")
 Most modules provide convenience methods:
 
 ```csharp
-// PostgreSQL: Get connection string
-var postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
+// PostgreSQL
+await using var postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
 await postgres.StartAsync();
-var connStr = postgres.GetConnectionString();
+var postgresConnectionString = postgres.GetConnectionString();
 
-// SQL Server: Get connection string
-var mssql = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04").Build();
+// SQL Server
+await using var mssql = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04").Build();
 await mssql.StartAsync();
-var connStr = mssql.GetConnectionString();
+var mssqlConnectionString = mssql.GetConnectionString();
 
-// MongoDB: Get connection string
-var mongo = new MongoDbBuilder("mongo:6.0").Build();
+// MongoDB
+await using var mongo = new MongoDbBuilder("mongo:6.0").Build();
 await mongo.StartAsync();
-var connStr = mongo.GetConnectionString();
+var mongoConnectionString = mongo.GetConnectionString();
 
-// Redis: Get connection string
-var redis = new RedisBuilder("redis:7-alpine").Build();
+// Redis
+await using var redis = new RedisBuilder("redis:7-alpine").Build();
 await redis.StartAsync();
-var connStr = redis.GetConnectionString();
+var redisConnectionString = redis.GetConnectionString();
 
-// Kafka: Get bootstrap address
-var kafka = new KafkaBuilder("confluentinc/cp-kafka:7.5.12").Build();
+// Kafka
+await using var kafka = new KafkaBuilder("confluentinc/cp-kafka:7.5.12").Build();
 await kafka.StartAsync();
-var bootstrapAddress = kafka.GetBootstrapAddress();
+var kafkaBootstrapAddress = kafka.GetBootstrapAddress();
 
-// Elasticsearch: Get connection string
-var elasticsearch = new ElasticsearchBuilder("elasticsearch:8.6.1").Build();
+// Elasticsearch
+await using var elasticsearch = new ElasticsearchBuilder("elasticsearch:8.6.1").Build();
 await elasticsearch.StartAsync();
-var connStr = elasticsearch.GetConnectionString();
+var elasticsearchConnectionString = elasticsearch.GetConnectionString();
 ```
 
 #### Finding the Right Module
@@ -299,7 +374,7 @@ Testcontainers.<ServiceName>
 
 When no pre-configured module exists, use generic containers with `ContainerBuilder`.
 
-**IMPORTANT: Always add a wait strategy** to ensure the container is ready before tests run. This is critical for reliability, especially in CI environments.
+**Important: Always add a wait strategy** to ensure the container is ready before tests run. This is critical for reliability, especially in CI environments.
 
 ```csharp
 // NuGet dependencies:
@@ -310,7 +385,7 @@ using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using Xunit;
 
-public class CustomContainerTests : IAsyncLifetime
+public sealed class CustomContainerTests : IAsyncLifetime
 {
     private readonly IContainer _container = new ContainerBuilder("custom-image:latest")
         .WithPortBinding(8080, true) // Random host port (recommended)
@@ -331,12 +406,11 @@ public class CustomContainerTests : IAsyncLifetime
     [Fact]
     public void GetEndpoint()
     {
-        // Get the mapped port
+        // Use mapped host port + resolved hostname.
         var port = _container.GetMappedPublicPort(8080);
         var hostname = _container.Hostname;
 
-        // Always use the Hostname property to create a connection string. TC ensures that
-        // the correct host is resolved based on the container runtime environment.
+        // Prefer Hostname over hard-coding localhost (works across runtimes/CI).
         var endpoint = $"http://{hostname}:{port}";
 
         Assert.True(port > 0, $"Port value must be greater than 0. Actual value: '{port}'.");
@@ -365,7 +439,7 @@ var container = new ContainerBuilder()
 
     // Files and Mounts
     .WithResourceMapping("./config.yml", "/app/config.yml")
-    // Mount directory or file (not recommended; its recommended to copy files into the container using WithResourceMapping(...))
+    // Bind mounts are not recommended; prefer WithResourceMapping.
     .WithBindMount("/host/path", "/container/path")
     .WithBindMount("/host/path", "/container/path", AccessMode.ReadOnly)
     .WithTmpfsMount("/tmp")
@@ -394,6 +468,8 @@ var container = new ContainerBuilder()
 ### 4. Writing Integration Tests
 
 #### Test Framework Integration
+
+Note: The **xUnit.net examples in this document use xUnit.net v3** (for example `TestContext.Current.CancellationToken`). The overall patterns are **framework-agnostic**: the same container setup/teardown concepts apply to NUnit and MSTest, and you can adapt cancellation-token usage to your test framework/version.
 
 **xUnit (Recommended Pattern with IAsyncLifetime)**
 
@@ -447,7 +523,7 @@ using Testcontainers.PostgreSql;
 using Xunit;
 
 // Fixture: Container shared across multiple tests in the class
-public class DatabaseFixture : IAsyncLifetime
+public sealed class DatabaseFixture : IAsyncLifetime
 {
     public PostgreSqlContainer Postgres { get; } = new PostgreSqlBuilder("postgres:16-alpine").Build();
 
@@ -463,7 +539,7 @@ public class DatabaseFixture : IAsyncLifetime
 }
 
 // Test class using the fixture
-public class DatabaseTests : IClassFixture<DatabaseFixture>
+public sealed class DatabaseTests : IClassFixture<DatabaseFixture>
 {
     private readonly DatabaseFixture _fixture;
 
@@ -494,7 +570,7 @@ using Testcontainers.PostgreSql;
 using NUnit.Framework;
 
 [TestFixture]
-public class DatabaseTests
+public sealed class DatabaseTests
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
 
@@ -535,7 +611,7 @@ using Npgsql;
 using Testcontainers.PostgreSql;
 
 [TestClass]
-public class DatabaseTests
+public sealed class DatabaseTests
 {
     private static readonly PostgreSqlContainer Postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
 
@@ -578,7 +654,7 @@ using Npgsql;
 using Testcontainers.PostgreSql;
 using Xunit;
 
-public class VersionTests
+public sealed class VersionTests
 {
     [Theory]
     [InlineData("postgres:14-alpine")]
@@ -617,7 +693,7 @@ using DotNet.Testcontainers.Networks;
 using Testcontainers.PostgreSql;
 using Xunit;
 
-public class MultiContainerTests : IAsyncLifetime
+public sealed class MultiContainerTests : IAsyncLifetime
 {
     private INetwork _network;
     private PostgreSqlContainer _postgres;
@@ -692,10 +768,12 @@ public void GetServiceInformation()
 
 #### Cleanup Patterns
 
+Goal: Start containers only for the time you need them, and ensure cleanup runs reliably even when tests fail.
+
 **Pattern 1: IAsyncLifetime (xUnit - Recommended)**
 
 ```csharp
-public class DatabaseTests : IAsyncLifetime
+public sealed class DatabaseTests : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
 
@@ -706,9 +784,7 @@ public class DatabaseTests : IAsyncLifetime
 
     public async ValueTask DisposeAsync()
     {
-        // Disposing of the container explicitly (resource) is not necessary. TC tracks
-        // resources and cleans them up automatically. However, disposing of them when they
-        // are no longer needed is considered best practice.
+        // Ryuk cleans up automatically, but disposing early is still best practice.
         await _postgres.DisposeAsync();
     }
 }
@@ -789,8 +865,8 @@ var container = new ContainerBuilder("custom-image:latest")
     .WithEnvironment("LOG_LEVEL", "debug")
     .Build();
 
-// Or with a dictionary
-var container = new ContainerBuilder("custom-image:latest")
+// Same idea, using a dictionary
+var containerWithDictionary = new ContainerBuilder("custom-image:latest")
     .WithEnvironment(new Dictionary<string, string>
     {
         ["DATABASE_URL"] = "postgres://localhost/db",
@@ -805,7 +881,7 @@ var container = new ContainerBuilder("custom-image:latest")
 [Fact]
 public async Task ExecuteCommandInContainer()
 {
-    await using var container = new ContainerBuilder("alpine:3:23")
+    await using var container = new ContainerBuilder("alpine:3.23")
         .WithCommand("tail", "-f", "/dev/null")  // Keep container running
         .Build();
 
@@ -840,36 +916,36 @@ public async Task ReadContainerLogs()
 #### Files and Directories
 
 ```csharp
-// Copy file to container
-var container = new ContainerBuilder("nginx:alpine")
-    .WithResourceMapping("./nginx.conf", "/etc/nginx/")
+// Copy a local file into the container
+var nginx = new ContainerBuilder("nginx:alpine")
+    .WithResourceMapping("./nginx.conf", "/etc/nginx/nginx.conf")
     .Build();
 
 // Copy multiple files
-var container = new ContainerBuilder("custom-image:latest")
-    .WithResourceMapping("./config.yml", "/app/")
-    .WithResourceMapping("./secrets.json", "/app/")
+var appWithFiles = new ContainerBuilder("custom-image:latest")
+    .WithResourceMapping("./config.yml", "/app/config.yml")
+    .WithResourceMapping("./secrets.json", "/app/secrets.json")
     .Build();
 
-// Bind mount
-var container = new ContainerBuilder("postgres:16")
+// Bind mount (not recommended for hermetic tests)
+var postgresWithBindMount = new ContainerBuilder("postgres:16")
     .WithBindMount("/host/data", "/var/lib/postgresql/data")
     .Build();
 
 // Read-only bind mount
-var container = new ContainerBuilder("custom-image:latest")
+var appWithReadOnlyMount = new ContainerBuilder("custom-image:latest")
     .WithBindMount("/host/config", "/app/config", AccessMode.ReadOnly)
     .Build();
 
-// Copy file from container
-await container.StartAsync();
-var fileContent = await container.ReadFileAsync("/etc/nginx/nginx.conf");
+// Read a file from a running container
+await nginx.StartAsync();
+var nginxConf = await nginx.ReadFileAsync("/etc/nginx/nginx.conf");
 ```
 
 #### Volume Mounts
 
 ```csharp
-public class VolumeTests : IAsyncLifetime
+public sealed class VolumeTests : IAsyncLifetime
 {
     private IVolume _volume;
     private IContainer _container;
@@ -915,16 +991,30 @@ var container = new ContainerBuilder("custom-image:latest")
 **Best Practices**:
 - ✅ **Always use wait strategies for services** - Ensures reliability
 - ✅ **Choose appropriate wait strategies** based on your service
-- ❌ **Never use `Task.Delay()` or `Thread.Sleep()`** - This is an anti-pattern that leads to flaky tests
+- ❌ **Never use `Task.Delay()` or `Thread.Sleep()` as a readiness mechanism** - This is an anti-pattern that leads to flaky tests
 - ✅ **Set reasonable timeouts** to handle slow CI environments
+
+**Common pitfall**: A `Task.Delay(...)` can be fine *inside a test* (for example, waiting for an expiration to happen). The anti-pattern is using fixed sleeps/delays to decide **when a containerized service is ready**. For readiness, always prefer explicit wait strategies.
 
 #### HTTP-Based Waiting (Recommended for Web Services)
 
 ```csharp
+using System.Net;
+
 var container = new ContainerBuilder("nginx:alpine")
     .WithPortBinding(80, true)
     .WithWaitStrategy(Wait.ForUnixContainer()
         .UntilHttpRequestIsSucceeded(r => r.ForPort(80).ForPath("/")))
+    .Build();
+
+// Wait for a specific path and expected status code
+var healthCheckContainer = new ContainerBuilder("custom-image:latest")
+    .WithPortBinding(8080, true)
+    .WithWaitStrategy(Wait.ForUnixContainer()
+        .UntilHttpRequestIsSucceeded(request => request
+            .ForPort(8080)
+            .ForPath("/health")
+            .ForStatusCode(HttpStatusCode.OK)))
     .Build();
 ```
 
@@ -937,22 +1027,9 @@ var container = new ContainerBuilder("elasticsearch:8.7.0")
     .Build();
 
 // Wait for specific log message with timeout
-var container = new ContainerBuilder("elasticsearch:8.7.0")
+var containerWithTimeout = new ContainerBuilder("elasticsearch:8.7.0")
     .WithWaitStrategy(Wait.ForUnixContainer()
         .UntilMessageIsLogged("started", o => o.WithTimeout(TimeSpan.FromMinutes(5))))
-    .Build();
-```
-
-#### HTTP-Based Waiting
-
-```csharp
-var container = new ContainerBuilder("custom-image:latest")
-    .WithPortBinding(8080, true)
-    .WithWaitStrategy(Wait.ForUnixContainer()
-        .UntilHttpRequestIsSucceeded(request => request
-            .ForPort(8080)
-            .ForPath("/health")
-            .ForStatusCode(HttpStatusCode.OK)))
     .Build();
 ```
 
@@ -985,7 +1062,7 @@ var container = new ContainerBuilder("custom-image:latest")
         .AddCustomWaitStrategy(new MyCustomWaitStrategy()))
     .Build();
 
-public class MyCustomWaitStrategy : IWaitUntil
+public sealed class MyCustomWaitStrategy : IWaitUntil
 {
     public async Task<bool> UntilAsync(IContainer container)
     {
@@ -999,7 +1076,7 @@ public class MyCustomWaitStrategy : IWaitUntil
 
 ### 9. Troubleshooting
 
-#### Check Docker Availability
+#### Verify Docker Availability
 
 ```csharp
 [Fact]
@@ -1011,6 +1088,8 @@ public void CheckDockerConnection()
 ```
 
 #### Debug Container Logs
+
+Note: In xUnit, `_output` typically comes from `ITestOutputHelper` injected into the test class constructor. If you are using NUnit/MSTest (or you prefer a quick local repro), you can replace `_output.WriteLine(...)` with your framework's logging mechanism or `Console.WriteLine(...)`.
 
 ```csharp
 [Fact]
@@ -1037,7 +1116,7 @@ public async Task DebugWithLogging()
 ```csharp
 var container = new ContainerBuilder("slow-starting-app:latest")
     .WithWaitStrategy(Wait.ForUnixContainer()
-        .UntilHttpRequestIsSucceeded(r => r.ForPort(8080).ForPath("/"), o => o.WithTimeout(TimeSpan.FromMinutes(5)))
+        .UntilHttpRequestIsSucceeded(r => r.ForPort(8080).ForPath("/"), o => o.WithTimeout(TimeSpan.FromMinutes(5))))
     .Build();
 ```
 
@@ -1068,6 +1147,8 @@ var container = new ContainerBuilder()
 
 // Check Ryuk is running
 // docker ps | grep ryuk
+// Windows PowerShell: docker ps | Select-String ryuk
+// Windows CMD: docker ps | findstr ryuk
 ```
 
 #### Environment Variables for Configuration
@@ -1093,11 +1174,16 @@ Environment.SetEnvironmentVariable("TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX", "my.r
 ### Example 1: PostgreSQL Integration Test
 
 ```csharp
+// NuGet dependencies:
+// - dotnet add package Npgsql
+// - dotnet add package Testcontainers.PostgreSql
+// - dotnet add package xunit.v3
+
 using Npgsql;
 using Testcontainers.PostgreSql;
 using Xunit;
 
-public class UserRepositoryTests : IAsyncLifetime
+public sealed class UserRepositoryTests : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
         .WithDatabase("testdb")
@@ -1150,7 +1236,6 @@ public class UserRepositoryTests : IAsyncLifetime
     [Fact]
     public async Task GetUser_ShouldReturnUser()
     {
-        // Arrange
         await using var connection = new NpgsqlConnection(_postgres.GetConnectionString());
         await connection.OpenAsync(TestContext.Current.CancellationToken);
 
@@ -1161,7 +1246,6 @@ public class UserRepositoryTests : IAsyncLifetime
         insertCmd.Parameters.AddWithValue("email", "bob@example.com");
         await insertCmd.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
 
-        // Act
         await using var selectCmd = new NpgsqlCommand(
             "SELECT name, email FROM users WHERE email = @email",
             connection);
@@ -1173,7 +1257,6 @@ public class UserRepositoryTests : IAsyncLifetime
         var name = reader.GetString(0);
         var email = reader.GetString(1);
 
-        // Assert
         Assert.Equal("Bob", name);
         Assert.Equal("bob@example.com", email);
     }
@@ -1183,11 +1266,16 @@ public class UserRepositoryTests : IAsyncLifetime
 ### Example 2: Redis Cache Test
 
 ```csharp
+// NuGet dependencies:
+// - dotnet add package StackExchange.Redis
+// - dotnet add package Testcontainers.Redis
+// - dotnet add package xunit.v3
+
 using StackExchange.Redis;
 using Testcontainers.Redis;
 using Xunit;
 
-public class RedisCacheTests : IAsyncLifetime
+public sealed class RedisCacheTests : IAsyncLifetime
 {
     private readonly RedisContainer _redis = new RedisBuilder("redis:7-alpine").Build();
 
@@ -1236,11 +1324,16 @@ public class RedisCacheTests : IAsyncLifetime
 ### Example 3: SQL Server with Entity Framework Core (SqlServer)
 
 ```csharp
+// NuGet dependencies:
+// - dotnet add package Microsoft.EntityFrameworkCore
+// - dotnet add package Testcontainers.Mssql
+// - dotnet add package xunit.v3
+
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.MsSql;
 using Xunit;
 
-public class ApplicationDbContext : DbContext
+public sealed class ApplicationDbContext : DbContext
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
@@ -1250,14 +1343,14 @@ public class ApplicationDbContext : DbContext
     public DbSet<User> Users { get; set; }
 }
 
-public class User
+public sealed class User
 {
     public int Id { get; set; }
     public string Name { get; set; }
     public string Email { get; set; }
 }
 
-public class EntityFrameworkTests : IAsyncLifetime
+public sealed class EntityFrameworkTests : IAsyncLifetime
 {
     private readonly MsSqlContainer _mssql = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest").Build();
 
@@ -1304,11 +1397,15 @@ public class EntityFrameworkTests : IAsyncLifetime
 ### Example 4: Kafka Producer/Consumer Test
 
 ```csharp
+// - dotnet add package Confluent.Kafka
+// - dotnet add package Testcontainers.Kafka
+// - dotnet add package xunit.v3
+
 using Confluent.Kafka;
 using Testcontainers.Kafka;
 using Xunit;
 
-public class KafkaTests : IAsyncLifetime
+public sealed class KafkaTests : IAsyncLifetime
 {
     private readonly KafkaContainer _kafka = new KafkaBuilder("confluentinc/confluent-local:7.5.0").Build();
 
@@ -1345,7 +1442,6 @@ public class KafkaTests : IAsyncLifetime
         using var consumer = new ConsumerBuilder<string, string>(consumerConfig).Build();
         consumer.Subscribe(topic);
 
-        // Act
         await producer.ProduceAsync(topic, new Message<string, string>
         {
             Key = "key1",
@@ -1360,9 +1456,70 @@ public class KafkaTests : IAsyncLifetime
 }
 ```
 
-### Example 5: Multi-Container Application Stack
+### Example 5: ASP.NET Core WebApplicationFactory Integration
 
 ```csharp
+// NuGet dependencies:
+// - dotnet add package Microsoft.AspNetCore.Mvc.Testing
+// - dotnet add package Testcontainers.PostgreSql
+// - dotnet add package xunit.v3
+
+using System.Net;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Testcontainers.PostgreSql;
+using Xunit;
+
+public sealed class ApiTests : IAsyncLifetime
+{
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
+
+    public async ValueTask InitializeAsync()
+    {
+        await _postgres.StartAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _postgres.DisposeAsync().AsTask();
+    }
+
+    public sealed class WebAppTests : WebApplicationFactory<Program>, IClassFixture<ApiTests>
+    {
+        private readonly string _connectionString;
+
+        public WebAppTests(ApiTests fixture)
+        {
+            _connectionString = fixture._postgres.GetConnectionString();
+        }
+
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            // Uses the .NET configuration system's connection-string support (ConnectionStrings:<Name>).
+            builder.UseSetting("ConnectionStrings:Database", _connectionString);
+        }
+
+        [Fact]
+        public async Task HealthCheck_ReturnsOk()
+        {
+            using var client = CreateClient();
+            var response = await client.GetAsync("/health");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+    }
+}
+```
+
+---
+
+### Example 6: Multi-Container Application Stack
+
+```csharp
+// NuGet dependencies:
+// - dotnet add package Testcontainers.PostgreSql
+// - dotnet add package Testcontainers.Redis
+// - dotnet add package xunit.v3
+
 using System.Net;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
@@ -1371,7 +1528,7 @@ using Testcontainers.PostgreSql;
 using Testcontainers.Redis;
 using Xunit;
 
-public class FullStackTests : IAsyncLifetime
+public sealed class FullStackTests : IAsyncLifetime
 {
     private INetwork _network;
     private PostgreSqlContainer _postgres;
@@ -1438,19 +1595,19 @@ public class FullStackTests : IAsyncLifetime
 
 ## Best Practices
 
-1. **Always use pre-configured modules when available** - They provide sensible defaults and helper methods
-1. **Use async lifecycle management** - Proper async initialization and cleanup (`IAsyncLifetime` in xUnit, `[OneTimeSetUp]`/`[OneTimeTearDown]` in NUnit, `[ClassInitialize]`/`[ClassCleanup]` in MSTest)
-1. **Always add wait strategies** - Ensures containers are ready before tests run; never use `Task.Delay()`
-1. **Use random assigned host ports** - Don't rely on fixed ports.
-1. **Copy configuration files to the container** - Don't rely on mounting files or directories.
-1. **Choose appropriate wait strategies** - Use HTTP for health endpoints, logs for startup messages, or ports for availability (port availability is usually avoided because ports are available before the service is ready to use)
-1. **Test against multiple configurations** - Use parameterized tests to validate against different versions or configurations (`Theory`/`InlineData` in xUnit, `TestCase` in NUnit, `DataRow` in MSTest)
-1. **Use custom networks** - For multi-container communication
-1. **Keep containers ephemeral** - Don't rely on state between tests
-1. **Share containers when appropriate** - Use fixtures or setup methods to share containers across tests for better performance
-1. **Use module helper methods** - E.g., `GetConnectionString()`, `GetBootstrapAddress()`
-1. **Debug with logs** - Use `GetLogsAsync()` when troubleshooting
-1. **Use builder pattern** - Fluent API for clear, maintainable configuration
+- **Always use pre-configured modules when available** - They provide sensible defaults and helper methods.
+- **Use async lifecycle management** - Proper async initialization and cleanup (`IAsyncLifetime` in xUnit, `[OneTimeSetUp]`/`[OneTimeTearDown]` in NUnit, `[ClassInitialize]`/`[ClassCleanup]` in MSTest).
+- **Always add wait strategies** - Ensures containers are ready before tests run; never use `Task.Delay()`/`Thread.Sleep()` as a readiness mechanism.
+- **Use randomly assigned host ports** - Do not rely on fixed ports.
+- **Copy configuration files into the container** - Do not rely on mounting files or directories.
+- **Choose appropriate wait strategies** - Use HTTP for health endpoints, logs for startup messages, or commands for readiness.
+- **Test against multiple configurations** - Use parameterized tests to validate versions/configurations (`Theory`/`InlineData` in xUnit, `TestCase` in NUnit, `DataRow` in MSTest).
+- **Use custom networks** - For multi-container communication.
+- **Keep containers ephemeral** - Do not rely on state between tests.
+- **Share containers when appropriate** - Use fixtures or setup methods to share containers across tests for better performance.
+- **Use module helper methods** - e.g., `GetConnectionString()`, `GetBootstrapAddress()`.
+- **Debug with logs** - Use `GetLogsAsync()` when troubleshooting.
+- **Use the builder pattern** - Fluent API for clear, maintainable configuration.
 
 ---
 
@@ -1460,4 +1617,6 @@ public class FullStackTests : IAsyncLifetime
 - **NuGet Packages**: https://www.nuget.org/packages?q=testcontainers
 - **GitHub Repository**: https://github.com/testcontainers/testcontainers-dotnet
 - **Examples**: https://github.com/testcontainers/testcontainers-dotnet/tree/develop/examples
+    - https://github.com/testcontainers/testcontainers-dotnet/tree/develop/examples/Flyway
+    - https://github.com/testcontainers/testcontainers-dotnet/tree/develop/examples/Respawn
 - **Community Slack**: [testcontainers.slack.com](https://testcontainers.slack.com)

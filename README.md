@@ -44,7 +44,7 @@ See the [testcontainers-go skill documentation](./testcontainers-go/SKILL.md) fo
 ### testcontainers-dotnet
 A comprehensive guide for using Testcontainers for .NET to write reliable integration tests with Docker containers in .NET projects. This skill provides:
 
-- Support for 40+ pre-configured modules for databases, message queues, cloud services, and more
+- Support for 65+ pre-configured modules for databases, message queues, cloud services, and more
 - Best practices for setting up and managing Docker containers in .NET tests (xUnit, NUnit, MSTest)
 - Configuration guidance for networking, volumes, and environment variables
 - Proper cleanup and resource management patterns with IAsyncLifetime
