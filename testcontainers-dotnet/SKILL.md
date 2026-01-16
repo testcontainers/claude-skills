@@ -349,7 +349,7 @@ await kafka.StartAsync();
 var kafkaBootstrapAddress = kafka.GetBootstrapAddress();
 
 // Elasticsearch
-await using var elasticsearch = new ElasticsearchBuilder("elasticsearch:8.6.1").Build();
+await using var elasticsearch = new ElasticsearchBuilder("elasticsearch:8.7.0").Build();
 await elasticsearch.StartAsync();
 var elasticsearchConnectionString = elasticsearch.GetConnectionString();
 ```
@@ -421,8 +421,7 @@ public sealed class CustomContainerTests : IAsyncLifetime
 **Common generic container options**:
 
 ```csharp
-var container = new ContainerBuilder()
-    .WithImage("image:tag")
+var container = new ContainerBuilder("image:tag")
 
     // Ports
     .WithPortBinding(80, true)          // Random host port
@@ -1465,6 +1464,7 @@ public sealed class KafkaTests : IAsyncLifetime
 // - dotnet add package xunit.v3
 
 using System.Net;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Testcontainers.PostgreSql;
@@ -1481,7 +1481,7 @@ public sealed class ApiTests : IAsyncLifetime
 
     public async ValueTask DisposeAsync()
     {
-        await _postgres.DisposeAsync().AsTask();
+        await _postgres.DisposeAsync();
     }
 
     public sealed class WebAppTests : WebApplicationFactory<Program>, IClassFixture<ApiTests>
