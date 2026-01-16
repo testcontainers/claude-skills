@@ -486,13 +486,11 @@ public sealed class DatabaseTests : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
 
-    // Called before each test
     public async ValueTask InitializeAsync()
     {
         await _postgres.StartAsync();
     }
 
-    // Called after each test
     public async ValueTask DisposeAsync()
     {
         await _postgres.DisposeAsync();
@@ -1139,8 +1137,7 @@ docker login registry.example.com
 
 ```csharp
 // Verify cleanup is enabled
-var container = new ContainerBuilder()
-    .WithImage("nginx:alpine")
+var container = new ContainerBuilder("nginx:alpine3.23")
     .WithCleanUp(true)  // Ensure auto-cleanup is enabled (default: true)
     .Build();
 
@@ -1351,7 +1348,7 @@ public sealed class User
 
 public sealed class EntityFrameworkTests : IAsyncLifetime
 {
-    private readonly MsSqlContainer _mssql = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest").Build();
+    private readonly MsSqlContainer _mssql = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04").Build();
 
     private ApplicationDbContext _dbContext;
 
@@ -1396,6 +1393,7 @@ public sealed class EntityFrameworkTests : IAsyncLifetime
 ### Example 4: Kafka Producer/Consumer Test
 
 ```csharp
+// NuGet dependencies:
 // - dotnet add package Confluent.Kafka
 // - dotnet add package Testcontainers.Kafka
 // - dotnet add package xunit.v3
