@@ -57,7 +57,7 @@ Then, to install the testcontainers-go skill:
 
 Alternatively, directly install the plugin via:
 ```
-/plugin install testcontainers-go@testcontainers-claude-skills
+/plugin install testcontainers@testcontainers-claude-skills
 ```
 
 After installing the plugin, you can use the skill by just mentioning it. For instance: "Use the testcontainers-go skill to help me write an integration test for PostgreSQL"
