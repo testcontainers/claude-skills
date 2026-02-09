@@ -11,15 +11,15 @@
   },
   "plugins": [
     {
-      "name": "testcontainers-go",
-      "source": "./skills/testcontainers-go",
-      "description": "A comprehensive guide for using Testcontainers for Go to write reliable integration tests with Docker containers in Go projects. Supports 62+ pre-configured modules for databases, message queues, cloud services, and more.",
+      "name": "testcontainers",
+      "source": "./plugins/testcontainers",
+      "description": "Testcontainers skills for writing reliable integration tests with Docker containers across multiple languages (Go, .NET, Python, and more)",
       "version": "1.0.0",
       "author": {
         "name": "Testcontainers",
         "email": "info@testcontainers.org"
       },
-      "keywords": ["testcontainers", "go", "docker", "integration-testing", "testing", "containers", "databases", "postgres", "redis", "kafka", "mysql", "mongodb"],
+      "keywords": ["testcontainers", "go", "dotnet", "python", "docker", "integration-testing", "testing", "containers", "databases", "postgres", "redis", "kafka", "mysql", "mongodb"],
       "category": "development",
       "strict": false
     }
