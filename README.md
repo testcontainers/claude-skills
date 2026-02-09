@@ -39,7 +39,7 @@ A comprehensive guide for using Testcontainers for Go to write reliable integrat
 - Create reproducible test environments
 - Set up ephemeral test infrastructure
 
-See the [testcontainers-go skill documentation](./testcontainers-go/SKILL.md) for detailed usage instructions and examples.
+See the [testcontainers-go skill documentation](./skills/testcontainers-go/SKILL.md) for detailed usage instructions and examples.
 
 ## Try in Claude Code, Claude.ai, and the API
 
