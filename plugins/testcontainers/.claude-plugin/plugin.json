@@ -1,0 +1,9 @@
+{
+    "name": "testcontainers",
+    "description": "Testcontainers skills for integration testing with Docker containers across multiple languages",
+    "version": "1.0.0",
+    "author": {
+      "name": "Testcontainers",
+      "email": "info@testcontainers.org"
+    }
+}
