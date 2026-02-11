@@ -11,28 +11,15 @@
   },
   "plugins": [
     {
-      "name": "testcontainers-go",
-      "source": "./testcontainers-go",
-      "description": "A comprehensive guide for using Testcontainers for Go to write reliable integration tests with Docker containers in Go projects. Supports 62+ pre-configured modules for databases, message queues, cloud services, and more.",
+      "name": "testcontainers",
+      "source": "./plugins/testcontainers",
+      "description": "Testcontainers skills for writing reliable integration tests with Docker containers across multiple languages (Go, .NET, Python, and more)",
       "version": "1.0.0",
       "author": {
         "name": "Testcontainers",
         "email": "info@testcontainers.org"
       },
-      "keywords": ["testcontainers", "go", "docker", "integration-testing", "testing", "containers", "databases", "postgres", "redis", "kafka", "mysql", "mongodb"],
-      "category": "development",
-      "strict": false
-    },
-    {
-      "name": "testcontainers-dotnet",
-      "source": "./testcontainers-dotnet",
-      "description": "A comprehensive guide for using Testcontainers for .NET to write reliable integration tests with Docker containers in .NET projects. Supports 65+ pre-configured modules for databases, message queues, cloud services, and more.",
-      "version": "1.0.0",
-      "author": {
-        "name": "Testcontainers",
-        "email": "info@testcontainers.org"
-      },
-      "keywords": ["testcontainers", "dotnet", "csharp", "containers", "docker", "integration-testing", "testing", "mstest", "nunit", "xunit", "databases", "mongodb", "postgres", "sqlserver", "message-queues", "redis", "rabbitmq", "kafka", "entityframework"],
+      "keywords": ["testcontainers", "go", "dotnet", "csharp", "python", "docker", "integration-testing", "testing", "containers", "databases", "mongodb", "postgres", "sqlserver", "message-queues", "redis", "rabbitmq", "kafka", "mysql", "entityframework"],
       "category": "development",
       "strict": false
     }

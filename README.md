@@ -39,7 +39,7 @@ A comprehensive guide for using Testcontainers for Go to write reliable integrat
 - Create reproducible test environments
 - Set up ephemeral test infrastructure
 
-See the [testcontainers-go skill documentation](./testcontainers-go/SKILL.md) for detailed usage instructions and examples.
+See the [testcontainers-go skill documentation](./plugins/testcontainers/skills/testcontainers-go/SKILL.md) for detailed usage instructions and examples.
 
 ### testcontainers-dotnet
 A comprehensive guide for using Testcontainers for .NET to write reliable integration tests with Docker containers in .NET projects. This skill provides:
@@ -57,7 +57,7 @@ A comprehensive guide for using Testcontainers for .NET to write reliable integr
 - Create reproducible test environments with Entity Framework Core
 - Set up ephemeral test infrastructure
 
-See the [testcontainers-dotnet skill documentation](./testcontainers-dotnet/SKILL.md) for detailed usage instructions and examples.
+See the [testcontainers-dotnet skill documentation](./plugins/testcontainers/skills/testcontainers-dotnet/SKILL.md) for detailed usage instructions and examples.
 
 ## Try in Claude Code, Claude.ai, and the API
 
@@ -67,18 +67,18 @@ You can register this repository as a Claude Code Plugin marketplace by running 
 /plugin marketplace add testcontainers/claude-skills
 ```
 
-Then, to install the testcontainers-go skill:
+Then, to install the testcontainers skill:
 1. Select `Browse and install plugins`
 2. Select `testcontainers-claude-skills`
-3. Select `testcontainers-go`
+3. Select `testcontainers`
 4. Select `Install now`
 
 Alternatively, directly install the plugin via:
 ```
-/plugin install testcontainers-go@testcontainers-claude-skills
+/plugin install testcontainers@testcontainers-claude-skills
 ```
 
-After installing the plugin, you can use the skill by just mentioning it. For instance: "Use the testcontainers-go skill to help me write an integration test for PostgreSQL"
+After installing the plugin, you can use the skills by just mentioning them. For instance: "Use the testcontainers-go skill to help me write an integration test for PostgreSQL" or "Use the testcontainers-dotnet skill to help me write an integration test for SQL Server"
 
 ### Claude.ai
 
