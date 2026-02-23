@@ -266,24 +266,32 @@ func TestDatabaseIsolation(t *testing.T) {
 
     connStr, _ := pgContainer.ConnectionString(ctx)
     db, _ := sql.Open("postgres", connStr)
-    defer db.Close()
 
     // Create initial data
     db.Exec("CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT)")
     db.Exec("INSERT INTO users (name) VALUES ('Alice')")
 
+    // Close connection before snapshot (PostgreSQL can't snapshot with active connections)
+    db.Close()
+
     // Take snapshot
     err = pgContainer.Snapshot(ctx, postgres.WithSnapshotName("initial"))
     require.NoError(t, err)
 
-    // Make changes
+    // Reconnect and make changes
+    db, _ = sql.Open("postgres", connStr)
     db.Exec("INSERT INTO users (name) VALUES ('Bob')")
+
+    // Close connection before restore
+    db.Close()
 
     // Restore to snapshot
     err = pgContainer.Restore(ctx, postgres.WithSnapshotName("initial"))
     require.NoError(t, err)
 
-    // Bob is gone, only Alice remains
+    // Reconnect — Bob is gone, only Alice remains
+    db, _ = sql.Open("postgres", connStr)
+    defer db.Close()
 }
 
 // Kafka: Get bootstrap servers

@@ -92,8 +92,15 @@ func TestPostgresWithSnapshotIsolation(t *testing.T) {
 	_, err = db.Exec(`INSERT INTO accounts (name, balance) VALUES ('Alice', 100.00), ('Bob', 50.00)`)
 	require.NoError(t, err)
 
+	// Close connection before snapshot (PostgreSQL can't snapshot with active connections)
+	db.Close()
+
 	// Take a snapshot of the initial state
 	err = pgContainer.Snapshot(ctx, postgres.WithSnapshotName("initial-state"))
+	require.NoError(t, err)
+
+	// Reconnect after snapshot
+	db, err = sql.Open("postgres", connStr)
 	require.NoError(t, err)
 
 	t.Run("Transfer", func(t *testing.T) {
@@ -109,9 +116,17 @@ func TestPostgresWithSnapshotIsolation(t *testing.T) {
 		require.Equal(t, 75.0, aliceBalance)
 	})
 
+	// Close connection before restore (PostgreSQL can't restore with active connections)
+	db.Close()
+
 	// Restore to initial state before next subtest
 	err = pgContainer.Restore(ctx, postgres.WithSnapshotName("initial-state"))
 	require.NoError(t, err)
+
+	// Reconnect after restore
+	db, err = sql.Open("postgres", connStr)
+	require.NoError(t, err)
+	defer db.Close()
 
 	t.Run("DeleteAccount", func(t *testing.T) {
 		// Alice should have her original balance again
