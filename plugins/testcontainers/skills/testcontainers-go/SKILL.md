@@ -1,12 +1,24 @@
 ---
 name: testcontainers-go
-description: A comprehensive guide for using Testcontainers for Go to write reliable integration tests with Docker containers in Go projects. Supports 62+ pre-configured modules for databases, message queues, cloud services, and more.
+description: >
+  A comprehensive guide for using Testcontainers for Go to write reliable integration tests
+  with Docker containers in Go projects. Supports 62+ pre-configured modules for databases,
+  message queues, cloud services, and more. Use this skill when writing Go integration tests,
+  setting up test databases (PostgreSQL, MySQL, Redis, MongoDB), testing with message queues
+  (Kafka, RabbitMQ), or creating container-based test infrastructure. Covers modules, generic
+  containers, networking, cleanup, wait strategies, CI/CD integration, and common anti-patterns.
 license: MIT
 ---
 
 # Testcontainers for Go Integration Testing
 
-A comprehensive guide for using Testcontainers for Go to write reliable integration tests with Docker containers in Go projects.
+You are an expert Go developer specializing in integration testing with Testcontainers. When this skill is active, you should:
+
+- **Always prefer pre-configured modules** over generic containers when a module exists
+- **Follow the cleanup-before-error-check pattern** in every test you write
+- **Use proper wait strategies** instead of `time.Sleep()` — never suggest `time.Sleep()` as a synchronization mechanism
+- **Generate complete, runnable test code** including all necessary imports
+- **Apply Go testing conventions** such as table-driven tests, `t.Parallel()`, build tags, and subtests
 
 ## Description
 
@@ -21,18 +33,45 @@ This skill helps you write integration tests using Testcontainers for Go, a Go l
 
 ## When to Use This Skill
 
+**Trigger keywords:** integration test, testcontainers, docker test, container test, database test, test with postgres, test with redis, test with kafka, real database test, end-to-end test infrastructure, test environment setup, test cleanup, test isolation.
+
 Use this skill when you need to:
 - Write integration tests that require real services (databases, message queues, etc.)
 - Test against multiple versions or configurations of dependencies
 - Create reproducible test environments
 - Avoid mocking external dependencies in integration tests
 - Set up ephemeral test infrastructure
+- Run integration tests in CI/CD pipelines (GitHub Actions, GitLab CI, etc.)
+- Share container setup across multiple tests in a package
 
 ## Prerequisites
 
 - **Docker or Podman** installed and running
 - **Go 1.24+** (check `go.mod` for project-specific requirements)
 - **Docker socket** accessible at standard locations (Docker Desktop on macOS/Windows, `/var/run/docker.sock` on Linux)
+
+## Decision Guide
+
+Use this decision tree to choose the right approach:
+
+```
+Need a container for testing?
+├── Is there a pre-configured module? (check module list below)
+│   ├── YES → Use the module (Section 2)
+│   └── NO  → Use a generic container (Section 3)
+│
+├── Need multiple containers to communicate?
+│   └── YES → Create a custom network (Section 5)
+│
+├── Need shared setup across tests in a package?
+│   └── YES → Use TestMain pattern (Section 10)
+│
+├── Need to separate integration tests from unit tests?
+│   └── YES → Use build tags (Section 10)
+│
+└── Running in CI/CD?
+    └── YES → See CI/CD Integration (Section 11)
+```
 
 ## Instructions
 
@@ -227,24 +266,32 @@ func TestDatabaseIsolation(t *testing.T) {
 
     connStr, _ := pgContainer.ConnectionString(ctx)
     db, _ := sql.Open("postgres", connStr)
-    defer db.Close()
 
     // Create initial data
     db.Exec("CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT)")
     db.Exec("INSERT INTO users (name) VALUES ('Alice')")
 
+    // Close connection before snapshot (PostgreSQL can't snapshot with active connections)
+    db.Close()
+
     // Take snapshot
     err = pgContainer.Snapshot(ctx, postgres.WithSnapshotName("initial"))
     require.NoError(t, err)
 
-    // Make changes
+    // Reconnect and make changes
+    db, _ = sql.Open("postgres", connStr)
     db.Exec("INSERT INTO users (name) VALUES ('Bob')")
+
+    // Close connection before restore
+    db.Close()
 
     // Restore to snapshot
     err = pgContainer.Restore(ctx, postgres.WithSnapshotName("initial"))
     require.NoError(t, err)
 
-    // Bob is gone, only Alice remains
+    // Reconnect — Bob is gone, only Alice remains
+    db, _ = sql.Open("postgres", connStr)
+    defer db.Close()
 }
 
 // Kafka: Get bootstrap servers
@@ -922,6 +969,275 @@ export DOCKER_HOST=unix:///var/run/docker.sock
 # Registry prefix for private registry
 export TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX=private.registry.com
 ```
+
+---
+
+### 10. Shared Setup & Build Tags
+
+#### Build Tags for Integration Tests
+
+Separate integration tests from unit tests using Go build tags. This prevents integration tests from running during `go test ./...` unless explicitly opted in.
+
+```go
+//go:build integration
+
+package myapp_test
+
+import (
+    "context"
+    "testing"
+
+    "github.com/testcontainers/testcontainers-go"
+    "github.com/testcontainers/testcontainers-go/modules/postgres"
+)
+
+func TestIntegrationWithPostgres(t *testing.T) {
+    ctx := context.Background()
+
+    pgContainer, err := postgres.Run(ctx, "postgres:16-alpine")
+    testcontainers.CleanupContainer(t, pgContainer)
+    require.NoError(t, err)
+
+    // Integration test logic...
+}
+```
+
+**Run integration tests explicitly:**
+```bash
+# Run only integration tests
+go test -tags=integration ./...
+
+# Run only unit tests (default, no tag needed)
+go test ./...
+```
+
+#### TestMain for Shared Container Setup
+
+When multiple tests in a package need the same container, use `TestMain` to start the container once and share it across all tests. This drastically reduces test execution time.
+
+```go
+package myapp_test
+
+import (
+    "context"
+    "database/sql"
+    "fmt"
+    "os"
+    "testing"
+
+    "github.com/testcontainers/testcontainers-go"
+    "github.com/testcontainers/testcontainers-go/modules/postgres"
+)
+
+var testDB *sql.DB
+
+func TestMain(m *testing.M) {
+    ctx := context.Background()
+
+    pgContainer, err := postgres.Run(ctx, "postgres:16-alpine",
+        postgres.WithDatabase("testdb"),
+    )
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "failed to start postgres: %s\n", err)
+        os.Exit(1)
+    }
+
+    connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "failed to get connection string: %s\n", err)
+        os.Exit(1)
+    }
+
+    testDB, err = sql.Open("postgres", connStr)
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "failed to open db: %s\n", err)
+        os.Exit(1)
+    }
+
+    // Run tests
+    code := m.Run()
+
+    // Cleanup
+    testDB.Close()
+    testcontainers.TerminateContainer(pgContainer)
+
+    os.Exit(code)
+}
+
+func TestCreateUser(t *testing.T) {
+    // testDB is shared across all tests — no container startup delay
+    _, err := testDB.Exec("INSERT INTO users (name) VALUES ($1)", "Alice")
+    require.NoError(t, err)
+}
+
+func TestGetUser(t *testing.T) {
+    var name string
+    err := testDB.QueryRow("SELECT name FROM users LIMIT 1").Scan(&name)
+    require.NoError(t, err)
+}
+```
+
+**When to use TestMain vs per-test containers:**
+- **TestMain**: All tests in a package need the same service, test speed is important
+- **Per-test containers**: Tests need different configurations, or test isolation is critical
+
+---
+
+### 11. CI/CD Integration
+
+#### GitHub Actions
+
+```yaml
+name: Integration Tests
+on: [push, pull_request]
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Run integration tests
+        run: go test -tags=integration -v -timeout 10m ./...
+```
+
+**Key CI considerations:**
+- Docker is pre-installed on GitHub Actions Ubuntu runners
+- Increase test timeout (`-timeout 10m`) for container startup in CI
+- Use `-count=1` to disable test caching when debugging
+- Consider `-race` flag for race condition detection
+
+#### Environment Configuration for CI
+
+```go
+// Detect CI environment and adjust timeouts
+func getStartupTimeout() time.Duration {
+    if os.Getenv("CI") != "" {
+        return 120 * time.Second // Longer timeout in CI
+    }
+    return 30 * time.Second
+}
+
+// Use in wait strategy
+testcontainers.WithWaitStrategy(
+    wait.ForListeningPort("5432/tcp").
+        WithStartupTimeout(getStartupTimeout()),
+)
+```
+
+---
+
+## Anti-Patterns
+
+Avoid these common mistakes when writing tests with Testcontainers.
+
+### ❌ Using `time.Sleep()` for Synchronization
+
+```go
+// WRONG: Flaky, slow, unreliable
+ctr, err := testcontainers.Run(ctx, "postgres:16",
+    testcontainers.WithExposedPorts("5432/tcp"),
+)
+time.Sleep(5 * time.Second) // DON'T DO THIS
+
+// CORRECT: Use wait strategies
+ctr, err := testcontainers.Run(ctx, "postgres:16",
+    testcontainers.WithExposedPorts("5432/tcp"),
+    testcontainers.WithWaitStrategy(
+        wait.ForListeningPort("5432/tcp").
+            WithStartupTimeout(30*time.Second),
+    ),
+)
+```
+
+### ❌ Checking Errors Before Registering Cleanup
+
+```go
+// WRONG: Resource leak if Run succeeds but error is non-nil
+ctr, err := testcontainers.Run(ctx, "nginx:alpine")
+require.NoError(t, err)                   // If this panics...
+testcontainers.CleanupContainer(t, ctr)   // ...cleanup never runs
+
+// CORRECT: Always register cleanup first
+ctr, err := testcontainers.Run(ctx, "nginx:alpine")
+testcontainers.CleanupContainer(t, ctr)   // Register cleanup immediately
+require.NoError(t, err)                   // Then check error
+```
+
+### ❌ Using Generic Containers When a Module Exists
+
+```go
+// WRONG: Reinventing the wheel
+ctr, err := testcontainers.Run(ctx, "postgres:16-alpine",
+    testcontainers.WithExposedPorts("5432/tcp"),
+    testcontainers.WithEnv(map[string]string{
+        "POSTGRES_USER":     "user",
+        "POSTGRES_PASSWORD": "pass",
+        "POSTGRES_DB":       "mydb",
+    }),
+    testcontainers.WithWaitStrategy(
+        wait.ForLog("database system is ready to accept connections").
+            WithOccurrence(2),
+    ),
+)
+
+// CORRECT: Use the PostgreSQL module
+pgContainer, err := postgres.Run(ctx, "postgres:16-alpine",
+    postgres.WithDatabase("mydb"),
+    postgres.WithUsername("user"),
+    postgres.WithPassword("pass"),
+)
+```
+
+### ❌ Hardcoding Ports
+
+```go
+// WRONG: Port conflicts, breaks in CI
+host, _ := ctr.Host(ctx)
+url := fmt.Sprintf("http://%s:8080/api", host) // Hardcoded port!
+
+// CORRECT: Use mapped ports
+endpoint, err := ctr.Endpoint(ctx, "http")
+url := fmt.Sprintf("%s/api", endpoint) // Uses dynamically assigned port
+```
+
+### ❌ Missing Wait Strategy for Exposed Ports
+
+```go
+// WRONG: Container may not be ready when tests start
+ctr, err := testcontainers.Run(ctx, "myapp:latest",
+    testcontainers.WithExposedPorts("8080/tcp"),
+    // No wait strategy!
+)
+
+// CORRECT: Always add a wait strategy when exposing ports
+ctr, err := testcontainers.Run(ctx, "myapp:latest",
+    testcontainers.WithExposedPorts("8080/tcp"),
+    testcontainers.WithWaitStrategy(
+        wait.ForListeningPort("8080/tcp").
+            WithStartupTimeout(30*time.Second),
+    ),
+)
+```
+
+---
+
+## Validation Checklist
+
+After writing a test with Testcontainers, verify these items:
+
+- [ ] **Cleanup registered before error check** — `CleanupContainer(t, ctr)` appears before `require.NoError(t, err)`
+- [ ] **Module used when available** — Not using generic container for a service that has a module
+- [ ] **Wait strategy present** — Every `WithExposedPorts()` has a corresponding `WithWaitStrategy()` (or the module provides one)
+- [ ] **No `time.Sleep()` for synchronization** — Wait strategies used instead
+- [ ] **No hardcoded ports** — Using `MappedPort()` or `Endpoint()` for dynamically assigned ports
+- [ ] **Proper imports** — All required packages imported (module, wait, network, etc.)
+- [ ] **Context passed** — `context.Background()` created and passed to container operations
+- [ ] **Resources closed** — Database connections, Redis clients, etc. are closed with `defer`
+- [ ] **Build tags used** (optional) — `//go:build integration` tag for integration test files
+- [ ] **Test compiles** — Run `go vet ./...` and `go build ./...` to catch issues early
 
 ---
 

@@ -122,6 +122,25 @@ go test -v -run TestGenericContainerExec
 # ... and many more
 ```
 
+### 06_ci_patterns_test.go
+**CI/CD Patterns and Test Isolation**
+
+Demonstrates:
+- Table-driven testing across multiple PostgreSQL versions in parallel
+- Snapshot-based test isolation for fast, repeatable subtests
+- Patterns suitable for CI/CD pipelines
+
+This is useful for:
+- Verifying compatibility across database versions
+- Running isolated subtests without restarting containers
+- Structuring integration tests for CI pipelines
+
+Run with:
+```bash
+go test -v -run TestPostgresVersionMatrix
+go test -v -run TestPostgresWithSnapshotIsolation
+```
+
 ## Running All Examples
 
 To run all examples:
