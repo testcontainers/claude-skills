@@ -19,7 +19,7 @@
         "name": "Testcontainers",
         "email": "info@testcontainers.org"
       },
-      "keywords": ["testcontainers", "go", "dotnet", "python", "docker", "integration-testing", "testing", "containers", "databases", "postgres", "redis", "kafka", "mysql", "mongodb"],
+      "keywords": ["testcontainers", "go", "dotnet", "csharp", "python", "docker", "integration-testing", "testing", "containers", "databases", "mongodb", "postgres", "sqlserver", "message-queues", "redis", "rabbitmq", "kafka", "mysql", "entityframework"],
       "category": "development",
       "strict": false
     }
