@@ -1,13 +1,13 @@
 ---
 name: testcontainers-node
 description: >
-  A comprehensive guide for using Testcontainers for Node.js (11.x+) to write reliable integration tests
-  with Docker containers in Node.js/TypeScript projects. Supports 40+ pre-configured modules for databases,
+  A comprehensive guide for using Testcontainers for Node.js to write reliable integration tests
+  with Docker containers in Node.js/TypeScript projects. Supports pre-configured modules for databases,
   message queues, cloud services, and more. Use this skill when writing Node.js integration tests,
   setting up test databases (PostgreSQL, MySQL, Redis, MongoDB), testing with message queues
   (Kafka, RabbitMQ), or creating container-based test infrastructure. Covers modules, generic
   containers, networking, cleanup, wait strategies, Docker Compose, and common testing patterns.
-applies_to: Testcontainers for Node.js 11.x+
+applies_to: Testcontainers for Node.js
 license: MIT
 ---
 
@@ -18,7 +18,7 @@ You are an expert Node.js/TypeScript developer specializing in integration testi
 - **Always prefer pre-configured modules** over generic containers when a module exists
 - **Use proper wait strategies** instead of `setTimeout()` or arbitrary delays -- never suggest delays as a synchronization mechanism
 - **Generate complete, runnable test code** including all necessary imports
-- **Apply Node.js testing conventions** for the test runner in use (Jest, Vitest, Mocha, or Node test runner)
+- **Apply Node.js testing conventions** for the test runner in use (Jest, Vitest, Mocha, Node test runner, Bun, Deno, etc.)
 - **Always stop containers in `afterAll`/`afterEach`** to prevent resource leaks
 - **Use TypeScript** by default unless the project is JavaScript-only
 
@@ -27,7 +27,7 @@ You are an expert Node.js/TypeScript developer specializing in integration testi
 This skill helps you write integration tests using Testcontainers for Node.js, a library that provides lightweight, throwaway instances of common databases, message queues, web browsers, or anything that can run in a Docker container.
 
 **Key capabilities:**
-- Use 40+ pre-configured modules for common services (databases, message queues, cloud services, etc.)
+- Use many pre-configured modules for common services (databases, message queues, cloud services, etc.)
 - Set up and manage Docker containers in Node.js tests
 - Configure networking, volumes, and environment variables
 - Implement proper cleanup and resource management
@@ -48,9 +48,9 @@ Use this skill when you need to:
 ## Prerequisites
 
 - **Docker or compatible runtime** installed and running (Docker, Podman, Colima, Rancher Desktop)
-- **Node.js 20+**
+- **Node.js** current LTS version or later
 - **Docker socket** accessible at standard locations
-- **Test framework**: Jest, Vitest, Mocha, or Node.js built-in test runner
+- **Test framework**: Any JavaScript/TypeScript test runner (Jest, Vitest, Mocha, Node.js built-in test runner, Bun, Deno, etc.)
 
 ## Decision Guide
 
@@ -111,7 +111,7 @@ npm install @testcontainers/kafka --save-dev
 
 ### 2. Using Pre-Configured Modules (Recommended Approach)
 
-**Testcontainers for Node.js provides 40+ pre-configured modules** that offer production-ready configurations, sensible defaults, and helper methods. **Always prefer modules over generic containers** when available.
+**Testcontainers for Node.js provides many pre-configured modules** that offer production-ready configurations, sensible defaults, and helper methods. **Always prefer modules over generic containers** when available.
 
 #### Why Use Modules?
 
@@ -121,28 +121,11 @@ npm install @testcontainers/kafka --save-dev
 - **Automatic credentials**: Secure credential generation and management
 - **Battle-tested**: Used in production by many projects
 
-#### Available Module Categories
+#### Available Modules
 
-**Databases (15 modules):**
-- `postgresql`, `mysql`, `mariadb`, `mongodb`, `redis`, `valkey`
-- `cockroachdb`, `clickhouse`, `couchbase`, `couchdb`
-- `arangodb`, `cassandra`, `scylladb`, `mssqlserver`
-- `kurrentdb`
+Browse the full module catalog at: https://node.testcontainers.org/ (see sidebar for complete list)
 
-**Message Queues (4 modules):**
-- `kafka`, `rabbitmq`, `nats`, `redpanda`
-
-**Search & Vector Databases (4 modules):**
-- `elasticsearch`, `opensearch`, `qdrant`, `weaviate`
-
-**Cloud & Infrastructure (6 modules):**
-- `gcloud`, `azurite`, `azurecosmosdb`, `azureservicebus`
-- `localstack`, `minio`
-
-**Services & Tools (11 modules):**
-- `chromadb`, `etcd`, `hivemq`, `k3s`, `mockserver`
-- `neo4j`, `ollama`, `s3mock`, `selenium`
-- `toxiproxy`, `vault`
+Modules cover databases, message queues, search engines, cloud services, and more. The catalog is the authoritative source for available modules.
 
 #### Basic Module Usage Pattern
 
@@ -172,147 +155,13 @@ describe("Redis", () => {
 });
 ```
 
-#### PostgreSQL Module
-
-```bash
-npm install @testcontainers/postgresql --save-dev
-npm install pg
-```
-
-```typescript
-import { PostgreSqlContainer, StartedPostgreSqlContainer } from "@testcontainers/postgresql";
-import { Client } from "pg";
-
-describe("PostgreSQL", () => {
-  let container: StartedPostgreSqlContainer;
-  let client: Client;
-
-  beforeAll(async () => {
-    container = await new PostgreSqlContainer("postgres:16-alpine")
-      .withDatabase("testdb")
-      .withUsername("testuser")
-      .start();
-
-    client = new Client({ connectionString: container.getConnectionUri() });
-    await client.connect();
-  });
-
-  afterAll(async () => {
-    await client.end();
-    await container.stop();
-  });
-
-  it("executes a query", async () => {
-    const result = await client.query("SELECT 1 AS value");
-    expect(result.rows[0].value).toBe(1);
-  });
-});
-```
-
-**PostgreSQL module helper methods:**
-- `getHost()` - container hostname
-- `getPort()` - mapped port number
-- `getDatabase()` - database name
-- `getUsername()` - authentication username
-- `getPassword()` - authentication password
-- `getConnectionUri()` - full connection string URI
-- `withDatabase(name)` - set custom database name
-- `withUsername(name)` - set custom username
-- `snapshot()` - create database state snapshot
-- `restoreSnapshot()` - revert to previous snapshot
-
-**PostgreSQL snapshot/restore for test isolation:**
-
-```typescript
-let container: StartedPostgreSqlContainer;
-
-beforeAll(async () => {
-  container = await new PostgreSqlContainer("postgres:16-alpine").start();
-  // Setup initial schema and seed data...
-  // IMPORTANT: Close all DB connections before snapshot
-  await client.end();
-  await container.snapshot();
-});
-
-afterEach(async () => {
-  // Close all DB connections before restore
-  await client.end();
-  await container.restoreSnapshot();
-  // Reconnect after restore
-  client = new Client({ connectionString: container.getConnectionUri() });
-  await client.connect();
-});
-```
-
-**IMPORTANT:** Never pass the `"postgres"` system database as the container database name if you want to use snapshots.
-
-#### MongoDB Module
-
-```bash
-npm install @testcontainers/mongodb --save-dev
-npm install mongoose
-```
-
-```typescript
-import { MongoDBContainer } from "@testcontainers/mongodb";
-import mongoose from "mongoose";
-
-describe("MongoDB", () => {
-  let container;
-
-  beforeAll(async () => {
-    container = await new MongoDBContainer("mongo:7").start();
-  });
-
-  afterAll(async () => {
-    await mongoose.disconnect();
-    await container.stop();
-  });
-
-  it("inserts and finds a document", async () => {
-    const db = mongoose.createConnection(container.getConnectionString(), {
-      directConnection: true,
-    });
-    const collection = db.collection("test");
-    await collection.insertOne({ value: 1 });
-    const result = await collection.findOne({ value: 1 });
-    expect(result?.value).toBe(1);
-    await db.close();
-  });
-});
-```
-
-**MongoDB module helper methods:**
-- `getConnectionString()` - connection string
-- `withUsername(name)` - set custom username
-- `withPassword(password)` - set custom password
-
-#### Kafka Module
-
-```bash
-npm install @testcontainers/kafka --save-dev
-```
-
-```typescript
-import { KafkaContainer } from "@testcontainers/kafka";
-
-const container = await new KafkaContainer("confluentinc/cp-kafka:7.5.0")
-  .withKraft()
-  .start();
-```
-
-**Kafka module options:**
-- `withKraft()` - enable KRaft mode (no ZooKeeper, Kafka 7.x+)
-- `withZooKeeper(host, port)` - configure external ZooKeeper
-- `withSaslSslListener(config)` - configure SASL/SSL authentication
-- `withNetwork(network)` - attach to a network
-
 #### Finding the Right Module
 
-1. **Browse available modules**: https://node.testcontainers.org/ (sidebar lists all modules)
+1. **Browse the module catalog**: https://node.testcontainers.org/ (sidebar lists all modules with documentation)
 2. **Check the GitHub repository**: `packages/modules/` in [testcontainers-node](https://github.com/testcontainers/testcontainers-node)
-3. **Browse by category** (see lists above)
-4. **Module package pattern**: `@testcontainers/<module-name>`
+3. **Module package pattern**: `@testcontainers/<module-name>`
+
+Each module page in the docs includes API details, helper methods, and usage examples specific to that service.
 
 ---
 
@@ -932,7 +781,7 @@ describe("MyService", () => {
 
     // 2. Connect to service
     // ... initialize client using container.getHost() and container.getMappedPort()
-  });
+  }, 60_000);
 
   afterAll(async () => {
     // 3. Disconnect client
@@ -1082,7 +931,7 @@ describe("MyService", () => {
     container = await new GenericContainer("redis:8")
       .withExposedPorts(6379)
       .start();
-  });
+  }, { timeout: 60_000 });
 
   after(async () => {
     await container.stop();
@@ -1153,38 +1002,11 @@ class StartedCustomContainer extends AbstractStartedContainer {
 
 ### 12. Configuration
 
-#### Environment Variables
+For the full list of environment variables and configuration options, see the official docs: https://node.testcontainers.org/configuration/
 
-| Variable | Example | Purpose |
-|----------|---------|---------|
-| `DEBUG` | `testcontainers*` | Enable all testcontainers logs |
-| `DEBUG` | `testcontainers` | Enable core logs only |
-| `DEBUG` | `testcontainers:containers` | Enable container logs |
-| `DEBUG` | `testcontainers:compose` | Enable compose logs |
-| `DEBUG` | `testcontainers:build` | Enable build logs |
-| `DEBUG` | `testcontainers:pull` | Enable pull logs |
-| `DEBUG` | `testcontainers:exec` | Enable exec logs |
-| `DOCKER_HOST` | `tcp://docker:2375` | Docker daemon URL |
-| `DOCKER_TLS_VERIFY` | `1` | Enable TLS with Docker daemon |
-| `DOCKER_CERT_PATH` | `/some/path` | Path to TLS certificate files |
-| `DOCKER_CONFIG` | `/some/path` | Path to Docker config.json |
-| `DOCKER_AUTH_CONFIG` | JSON string | Docker auth config (takes precedence) |
-| `TESTCONTAINERS_HOST_OVERRIDE` | `tcp://docker:2375` | Docker host for port exposure |
-| `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE` | `/var/run/docker.sock` | Docker socket path for Ryuk |
-| `TESTCONTAINERS_RYUK_PRIVILEGED` | `true` | Run Ryuk as privileged |
-| `TESTCONTAINERS_RYUK_DISABLED` | `true` | Disable Ryuk (resource reaper) |
-| `TESTCONTAINERS_RYUK_PORT` | `65515` | Ryuk host port |
-| `TESTCONTAINERS_SSHD_PORT` | `65515` | SSHd host port |
-| `TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX` | `registry.company.com/mirror/` | Default image registry prefix |
-| `RYUK_CONTAINER_IMAGE` | `testcontainers/ryuk:0.14.0` | Custom Ryuk image |
-| `SSHD_CONTAINER_IMAGE` | `testcontainers/sshd:1.3.0` | Custom SSHd image |
-| `TESTCONTAINERS_REUSE_ENABLE` | `true` | Enable container reuse |
-| `TESTCONTAINERS_RYUK_VERBOSE` | `true` | Enable Ryuk verbose logging |
-| `TESTCONTAINERS_RYUK_RECONNECTION_TIMEOUT` | `30s` | Ryuk reconnection timeout |
+#### Key Configuration
 
-#### Logging
-
-Testcontainers uses the `debug` npm package. Enable logging via the `DEBUG` environment variable:
+**Logging** uses the `debug` npm package:
 
 ```bash
 # Enable all testcontainers logs
@@ -1192,25 +1014,18 @@ DEBUG=testcontainers* npm test
 
 # Enable specific log namespaces
 DEBUG=testcontainers,testcontainers:exec npm test
-
-# Available namespaces:
-# testcontainers          - core functionality
-# testcontainers:containers - container operations
-# testcontainers:compose  - Docker Compose operations
-# testcontainers:build    - image build operations
-# testcontainers:pull     - image pull operations
-# testcontainers:exec     - container exec operations
 ```
 
-#### Image Name Substitution
-
-Automatically prefix all Docker Hub images with your registry:
+**Image name substitution** for private registries:
 
 ```bash
 export TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX=registry.mycompany.com/mirror/
 ```
 
-This prepends the prefix to all Docker Hub image pulls.
+**Common environment variables:**
+- `DOCKER_HOST` - Docker daemon URL (e.g., `tcp://docker:2375`)
+- `TESTCONTAINERS_RYUK_DISABLED=true` - Disable Ryuk (resource reaper)
+- `TESTCONTAINERS_REUSE_ENABLE=true` - Enable container reuse
 
 ---
 
@@ -1413,7 +1228,7 @@ const url = `http://${container.getHost()}:${container.getMappedPort(8080)}`;
 
 ---
 
-### 18. Complete Module Reference
+### 18. Module Reference
 
 All modules follow the `@testcontainers/<name>` package naming convention. Install with:
 
@@ -1421,45 +1236,4 @@ All modules follow the `@testcontainers/<name>` package naming convention. Insta
 npm install @testcontainers/<module-name> --save-dev
 ```
 
-| Module | Package | Primary Class |
-|--------|---------|---------------|
-| ArangoDB | `@testcontainers/arangodb` | `ArangoDBContainer` |
-| Azure CosmosDB | `@testcontainers/azurecosmosdb` | - |
-| Azure Service Bus | `@testcontainers/azureservicebus` | - |
-| Azurite | `@testcontainers/azurite` | - |
-| Cassandra | `@testcontainers/cassandra` | `CassandraContainer` |
-| ChromaDB | `@testcontainers/chromadb` | `ChromaDBContainer` |
-| ClickHouse | `@testcontainers/clickhouse` | `ClickHouseContainer` |
-| CockroachDB | `@testcontainers/cockroachdb` | `CockroachDBContainer` |
-| Couchbase | `@testcontainers/couchbase` | `CouchbaseContainer` |
-| CouchDB | `@testcontainers/couchdb` | `CouchDBContainer` |
-| Elasticsearch | `@testcontainers/elasticsearch` | `ElasticsearchContainer` |
-| Etcd | `@testcontainers/etcd` | `EtcdContainer` |
-| GCloud | `@testcontainers/gcloud` | - |
-| HiveMQ | `@testcontainers/hivemq` | `HiveMQContainer` |
-| K3s | `@testcontainers/k3s` | `K3sContainer` |
-| Kafka | `@testcontainers/kafka` | `KafkaContainer` |
-| KurrentDB | `@testcontainers/kurrentdb` | `KurrentDBContainer` |
-| LocalStack | `@testcontainers/localstack` | `LocalstackContainer` |
-| MariaDB | `@testcontainers/mariadb` | `MariaDBContainer` |
-| MinIO | `@testcontainers/minio` | `MinIOContainer` |
-| MockServer | `@testcontainers/mockserver` | `MockServerContainer` |
-| MongoDB | `@testcontainers/mongodb` | `MongoDBContainer` |
-| MSSQLServer | `@testcontainers/mssqlserver` | `MSSQLServerContainer` |
-| MySQL | `@testcontainers/mysql` | `MySQLContainer` |
-| NATS | `@testcontainers/nats` | `NatsContainer` |
-| Neo4j | `@testcontainers/neo4j` | `Neo4jContainer` |
-| Ollama | `@testcontainers/ollama` | `OllamaContainer` |
-| OpenSearch | `@testcontainers/opensearch` | `OpenSearchContainer` |
-| PostgreSQL | `@testcontainers/postgresql` | `PostgreSqlContainer` |
-| Qdrant | `@testcontainers/qdrant` | `QdrantContainer` |
-| RabbitMQ | `@testcontainers/rabbitmq` | `RabbitMQContainer` |
-| Redis | `@testcontainers/redis` | `RedisContainer` |
-| Redpanda | `@testcontainers/redpanda` | `RedpandaContainer` |
-| S3Mock | `@testcontainers/s3mock` | - |
-| ScyllaDB | `@testcontainers/scylladb` | `ScyllaDBContainer` |
-| Selenium | `@testcontainers/selenium` | `SeleniumContainer` |
-| ToxiProxy | `@testcontainers/toxiproxy` | `ToxiProxyContainer` |
-| Valkey | `@testcontainers/valkey` | `ValkeyContainer` |
-| Vault | `@testcontainers/vault` | `VaultContainer` |
-| Weaviate | `@testcontainers/weaviate` | `WeaviateContainer` |
+For the complete and up-to-date list of available modules, see: https://node.testcontainers.org/
