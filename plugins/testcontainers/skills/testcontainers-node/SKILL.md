@@ -20,6 +20,8 @@ You are an expert Node.js/TypeScript developer specializing in integration testi
 - **Always stop containers in `afterAll`/`afterEach`** to prevent resource leaks
 - **Use TypeScript** by default unless the project is JavaScript-only
 - **Always use `container.getHost()`** instead of hardcoding `localhost` -- this ensures compatibility with all container runtimes
+- **Infer the package manager** from the project (check for `yarn.lock`, `pnpm-lock.yaml`, `bun.lockb`, or `package-lock.json`) and use the appropriate install command
+- **Never use `:latest` image tags** in examples -- always pin to a specific version
 
 ## Official Documentation
 
@@ -57,12 +59,15 @@ Need a container for testing?
 ## Installation
 
 ```bash
+# Use the package manager for your project (npm, yarn, pnpm, bun, etc.)
 # Core package
-npm install testcontainers --save-dev
+npm install -D testcontainers        # npm
+yarn add -D testcontainers           # yarn
+pnpm add -D testcontainers           # pnpm
+bun add -d testcontainers            # bun
 
 # Modules follow the pattern @testcontainers/<module-name>
-npm install @testcontainers/postgresql --save-dev
-npm install @testcontainers/redis --save-dev
+npm install -D @testcontainers/postgresql
 ```
 
 ## Key Conventions
@@ -79,7 +84,7 @@ const uri = container.getConnectionUri();
 
 // FALLBACK: generic (always add a wait strategy!)
 import { GenericContainer, Wait } from "testcontainers";
-const container = await new GenericContainer("custom-image:latest")
+const container = await new GenericContainer("custom-image:1.2.3")
   .withExposedPorts(8080)
   .withWaitStrategy(Wait.forListeningPorts())
   .start();
